@@ -5,6 +5,7 @@ FROM node:22-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
       chromium \
+      xvfb \
       fonts-liberation \
       fonts-noto-color-emoji \
       libasound2 \
