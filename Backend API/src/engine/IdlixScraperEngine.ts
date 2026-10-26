@@ -34,15 +34,7 @@ export class IdlixScraperEngine {
     }
 
     this.initPromise = (async () => {
-      const proxyHost = process.env.PROXY_HOST || '209.97.175.37';
-      const proxyPort = process.env.PROXY_PORT || '9050';
-      const useProxy = process.env.USE_PROXY !== 'false';
-
-      console.log(
-        `[ScraperEngine] Launching real-browser engine (proxy: ${
-          useProxy ? `socks5://${proxyHost}:${proxyPort}` : 'disabled'
-        }) at ${this.baseUrl}...`
-      );
+      console.log(`[ScraperEngine] Launching real-browser stealth engine for Cloudflare bypass at ${this.baseUrl}...`);
 
       try {
         const browserArgs = [
@@ -56,22 +48,11 @@ export class IdlixScraperEngine {
           '--lang=id-ID,id,en-US,en',
         ];
 
-        if (useProxy && proxyHost && proxyPort) {
-          browserArgs.push(`--proxy-server=socks5://${proxyHost}:${proxyPort}`);
-        }
-
         // Option A: puppeteer-real-browser with Xvfb virtual display on Linux VPS & SOCKS5 proxy
         const realBrowser = await (connect as any)({
           headless: false,
           turnstile: true,
           disableXvfb: process.platform !== 'linux',
-          proxy:
-            useProxy && proxyHost && proxyPort
-              ? {
-                  host: proxyHost,
-                  port: parseInt(proxyPort, 10),
-                }
-              : undefined,
           args: browserArgs,
         });
 
