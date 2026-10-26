@@ -51,35 +51,53 @@ export class IdlixScraperEngine {
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
             '--disable-gpu',
             '--no-first-run',
             '--no-zygote',
             '--disable-extensions',
-            '--window-size=1280,720',
+            '--disable-blink-features=AutomationControlled',
+            '--window-size=1920,1080',
+            '--lang=id-ID,id,en-US,en',
           ],
         });
 
         const pages = await this.browser!.pages();
         this.page = pages.length > 0 ? pages[0] : await this.browser!.newPage();
 
+        await this.page.setViewport({ width: 1920, height: 1080 });
+
+        // Advanced stealth: mask navigator.webdriver and chrome runtime signatures
+        await this.page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+          });
+          (window as any).chrome = {
+            runtime: {},
+            loadTimes: () => {},
+            csi: () => {},
+            app: {},
+          };
+        });
+
         await this.page.setUserAgent(
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
         );
 
-        // Block media and ad networks to save VPS RAM and CPU
+        await this.page.setExtraHTTPHeaders({
+          'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Sec-Ch-Ua': '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"Windows"',
+        });
+
+        // Recommendation 1: Never block fonts, images, or Cloudflare challenge assets during initialization
+        // Only block heavy third-party tracking/ad domains to prevent interference with Turnstile profiling
         await this.page.setRequestInterception(true);
         this.page.on('request', (req) => {
-          const resType = req.resourceType();
           const url = req.url();
           const adBlock = ['xyzchat', 'doubleclick', 'google-analytics', 'analytics.google.com'];
 
-          if (
-            resType === 'image' ||
-            resType === 'media' ||
-            resType === 'font' ||
-            adBlock.some((d) => url.includes(d))
-          ) {
+          if (adBlock.some((d) => url.includes(d))) {
             req.abort();
           } else {
             req.continue();
@@ -92,9 +110,50 @@ export class IdlixScraperEngine {
           timeout: 45000,
         });
 
-        // Wait until Cloudflare challenge passes (title does not contain "Just a moment...")
+        // Recommendation 2: Cloudflare Turnstile detection & auto-solving
+        const isChallengeActive = async () => {
+          try {
+            const title = (await this.page!.title()).toLowerCase();
+            return title.includes('just a moment') || title.includes('attention required');
+          } catch (_) {
+            return false;
+          }
+        };
+
+        if (await isChallengeActive()) {
+          console.log('[ScraperEngine] Cloudflare challenge detected, monitoring Turnstile resolution...');
+
+          // Give Turnstile up to 30s to solve automatically or attempt interaction
+          for (let attempt = 1; attempt <= 15; attempt++) {
+            await new Promise((r) => setTimeout(r, 2000));
+
+            if (!(await isChallengeActive())) {
+              break;
+            }
+
+            try {
+              const frames = this.page!.frames();
+              for (const frame of frames) {
+                if (frame.url().includes('challenges.cloudflare.com')) {
+                  const checkbox = await frame.$(
+                    'input[type="checkbox"], .ctp-checkbox-label, #challenge-stage, .mark'
+                  );
+                  if (checkbox) {
+                    console.log(`[ScraperEngine] Attempting interaction with Turnstile widget (attempt ${attempt})...`);
+                    await checkbox.click().catch(() => {});
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        // Wait until Cloudflare challenge passes
         await this.page.waitForFunction(
-          () => !document.title.toLowerCase().includes('just a moment'),
+          () => {
+            const title = document.title.toLowerCase();
+            return !title.includes('just a moment') && !title.includes('attention required');
+          },
           { timeout: 35000 }
         );
 
@@ -180,6 +239,19 @@ export class IdlixScraperEngine {
 
       if (result.error) {
         throw new Error(result.error);
+      }
+
+      // If Cloudflare returns 403 interstitial, mark session invalid so it re-solves next time
+      if (
+        result.status === 403 &&
+        typeof result.data === 'string' &&
+        (result.data.includes('Just a moment') ||
+          result.data.includes('cf-mitigated') ||
+          result.data.includes('challenges.cloudflare.com'))
+      ) {
+        console.warn(`[ScraperEngine] Received Cloudflare 403 challenge for ${url}. Invalidating scraper session.`);
+        this.isReady = false;
+        this.page = null;
       }
 
       return { status: result.status, data: result.data };
