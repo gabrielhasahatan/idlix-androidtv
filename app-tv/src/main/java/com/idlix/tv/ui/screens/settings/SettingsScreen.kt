@@ -588,13 +588,13 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "DNS-over-HTTPS (DoH)",
+                        text = stringResource(R.string.doh_header),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = NetflixWhite
                     )
                     Text(
-                        text = "Bypass pemblokiran DNS ISP & percepat pemutaran streaming film/serial",
+                        text = stringResource(R.string.doh_desc),
                         color = NetflixLightGray,
                         fontSize = 12.sp
                     )
@@ -602,10 +602,10 @@ fun SettingsScreen(
             }
 
             val dnsOptions = listOf(
-                Pair(ApiClient.DNS_PROVIDER_GOOGLE, "Google DNS (Recommended)"),
-                Pair(ApiClient.DNS_PROVIDER_CLOUDFLARE, "Cloudflare DNS"),
-                Pair(ApiClient.DNS_PROVIDER_ADGUARD, "AdGuard DNS"),
-                Pair(ApiClient.DNS_PROVIDER_SYSTEM, "System Default (DoH Off)")
+                Pair(ApiClient.DNS_PROVIDER_GOOGLE, stringResource(R.string.dns_google)),
+                Pair(ApiClient.DNS_PROVIDER_CLOUDFLARE, stringResource(R.string.dns_cloudflare)),
+                Pair(ApiClient.DNS_PROVIDER_ADGUARD, stringResource(R.string.dns_adguard)),
+                Pair(ApiClient.DNS_PROVIDER_SYSTEM, stringResource(R.string.dns_system))
             )
 
             Row(
@@ -656,7 +656,7 @@ fun SettingsScreen(
                     modifier = Modifier.height(38.dp)
                 ) {
                     Text(
-                        text = if (isTestingDns) "Testing DNS..." else "Test DNS",
+                        text = if (isTestingDns) stringResource(R.string.testing_dns) else stringResource(R.string.test_dns),
                         fontSize = 12.sp
                     )
                 }
@@ -676,7 +676,7 @@ fun SettingsScreen(
                     shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
                     modifier = Modifier.height(38.dp)
                 ) {
-                    Text(text = "Reset Default DNS", fontSize = 12.sp)
+                    Text(text = stringResource(R.string.reset_default_dns), fontSize = 12.sp)
                 }
             }
 

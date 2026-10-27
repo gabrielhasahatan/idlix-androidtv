@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.idlix.data.api.ApiClient
 import com.idlix.data.repository.SubdlRepository
+import com.idlix.mobile.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,9 +64,10 @@ class SettingsViewModel(
     }
 
     fun saveBackendUrl() {
+        val app = getApplication<Application>()
         val targetUrl = _uiState.value.backendUrl.trim()
         if (targetUrl.isBlank()) {
-            _uiState.value = _uiState.value.copy(backendTestResult = "Failed: Server URL cannot be empty")
+            _uiState.value = _uiState.value.copy(backendTestResult = app.getString(R.string.url_empty_error))
             return
         }
         ApiClient.setBaseUrl(targetUrl)
@@ -73,34 +75,36 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(
             activeBackendUrl = newActive,
             backendUrl = newActive,
-            backendTestResult = "Server URL saved successfully!"
+            backendTestResult = app.getString(R.string.url_saved_success)
         )
     }
 
     fun saveSubdlKey() {
+        val app = getApplication<Application>()
         val targetKey = _uiState.value.subdlKey.trim()
         SubdlRepository.setApiKey(targetKey)
         val newActive = SubdlRepository.getApiKey()
         _uiState.value = _uiState.value.copy(
             activeSubdlKey = newActive,
             subdlKey = newActive,
-            subdlTestResult = "SubDL API key saved successfully!"
+            subdlTestResult = app.getString(R.string.subdl_key_saved_success)
         )
     }
 
     fun testBackend() {
+        val app = getApplication<Application>()
         val targetUrl = _uiState.value.backendUrl.trim()
         if (targetUrl.isBlank()) {
             _uiState.value = _uiState.value.copy(
                 isTestingBackend = false,
-                backendTestResult = "Failed: Server URL cannot be empty"
+                backendTestResult = app.getString(R.string.url_empty_error)
             )
             return
         }
         if (!targetUrl.startsWith("http://", ignoreCase = true) && !targetUrl.startsWith("https://", ignoreCase = true)) {
             _uiState.value = _uiState.value.copy(
                 isTestingBackend = false,
-                backendTestResult = "Failed: URL must start with http:// or https://"
+                backendTestResult = app.getString(R.string.url_invalid_protocol)
             )
             return
         }
@@ -119,11 +123,12 @@ class SettingsViewModel(
     }
 
     fun testSubdl() {
+        val app = getApplication<Application>()
         val targetKey = _uiState.value.subdlKey.trim()
         if (targetKey.isBlank()) {
             _uiState.value = _uiState.value.copy(
                 isTestingSubdl = false,
-                subdlTestResult = "Failed: SubDL API key cannot be empty"
+                subdlTestResult = app.getString(R.string.subdl_key_empty_error)
             )
             return
         }
@@ -146,13 +151,14 @@ class SettingsViewModel(
     }
 
     fun saveDnsProvider() {
+        val app = getApplication<Application>()
         val target = _uiState.value.selectedDnsProvider
         ApiClient.setDnsProvider(target)
         val active = ApiClient.getDnsProvider()
         _uiState.value = _uiState.value.copy(
             activeDnsProvider = active,
             selectedDnsProvider = active,
-            dnsTestResult = "DNS provider saved successfully!"
+            dnsTestResult = app.getString(R.string.dns_saved_success)
         )
     }
 

@@ -443,14 +443,17 @@ fun PlayerScreen(
                 ExoPlayer.Builder(context, renderersFactory)
                     .setLoadControl(loadControl)
                     .build().apply {
-                    val activeSub = resolved.subtitles.firstOrNull { it.lang == "id" }
+                    val prefLang = com.idlix.data.util.LocaleHelper.getPreferredLanguage()
+                    val fallbackLang = if (prefLang == "id") "en" else "id"
+                    val activeSub = resolved.subtitles.firstOrNull { it.lang.equals(prefLang, ignoreCase = true) }
+                        ?: resolved.subtitles.firstOrNull { it.lang.equals(fallbackLang, ignoreCase = true) }
                         ?: resolved.subtitles.firstOrNull()
 
                     val finalMediaSource = buildMediaSource(resolved.hlsMasterUrl, activeSub)
                     setMediaSource(finalMediaSource)
 
                     trackSelectionParameters = trackSelectionParameters.buildUpon()
-                        .setPreferredTextLanguage("id")
+                        .setPreferredTextLanguage(prefLang)
                         .setSelectUndeterminedTextLanguage(true)
                         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                         .build()
@@ -627,8 +630,9 @@ fun PlayerScreen(
                     viewModel.toggleSubtitle()
                     val trackSelector = exoPlayer.trackSelectionParameters.buildUpon()
                     if (willBeEnabled) {
+                        val prefLang = com.idlix.data.util.LocaleHelper.getPreferredLanguage()
                         trackSelector
-                            .setPreferredTextLanguage(uiState.selectedSubtitle?.lang ?: "id")
+                            .setPreferredTextLanguage(uiState.selectedSubtitle?.lang ?: prefLang)
                             .setSelectUndeterminedTextLanguage(true)
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                     } else {

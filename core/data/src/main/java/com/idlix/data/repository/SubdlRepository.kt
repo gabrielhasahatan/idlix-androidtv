@@ -7,6 +7,7 @@ import com.idlix.data.api.ApiClient
 import com.idlix.data.model.SubdlResponse
 import com.idlix.data.model.SubdlSubtitle
 import com.idlix.data.model.SubtitleTrack
+import com.idlix.data.util.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -160,6 +161,29 @@ object SubdlRepository {
         }
     }
 
+    suspend fun fetchSubtitleForLanguage(
+        title: String,
+        type: String = "movie",
+        tmdbId: Long? = null,
+        imdbId: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        targetLang: String = LocaleHelper.getPreferredLanguage(),
+        context: Context
+    ): SubtitleTrack? = withContext(Dispatchers.IO) {
+        val langParam = if (targetLang.equals("id", ignoreCase = true)) "ID" else "EN"
+        val allSubs = searchAllSubtitles(title, type, tmdbId, imdbId, season, episode, languages = langParam)
+        val chosen = allSubs.firstOrNull {
+            if (langParam == "ID") {
+                it.language.equals("ID", ignoreCase = true) || it.lang.equals("indonesian", ignoreCase = true)
+            } else {
+                it.language.equals("EN", ignoreCase = true) || it.lang.equals("english", ignoreCase = true)
+            }
+        } ?: allSubs.firstOrNull() ?: return@withContext null
+
+        downloadSubtitle(chosen, context)
+    }
+
     suspend fun fetchIndonesianSubtitle(
         title: String,
         type: String = "movie",
@@ -168,14 +192,16 @@ object SubdlRepository {
         season: Int? = null,
         episode: Int? = null,
         context: Context
-    ): SubtitleTrack? = withContext(Dispatchers.IO) {
-        val allSubs = searchAllSubtitles(title, type, tmdbId, imdbId, season, episode, languages = "ID")
-        val chosen = allSubs.firstOrNull {
-            it.language.equals("ID", ignoreCase = true) || it.lang.equals("indonesian", ignoreCase = true)
-        } ?: allSubs.firstOrNull() ?: return@withContext null
-
-        downloadSubtitle(chosen, context)
-    }
+    ): SubtitleTrack? = fetchSubtitleForLanguage(
+        title = title,
+        type = type,
+        tmdbId = tmdbId,
+        imdbId = imdbId,
+        season = season,
+        episode = episode,
+        targetLang = "id",
+        context = context
+    )
 
     private fun downloadAndExtractSrt(zipUrl: String, context: Context, filePrefix: String): File? {
         return try {

@@ -256,8 +256,10 @@ fun MobilePlayerView(
                         )
                         setMediaSource(mediaSource)
 
+                        val prefLang = com.idlix.data.util.LocaleHelper.getPreferredLanguage()
+                        val targetLang = activeSub?.lang ?: prefLang
                         trackSelectionParameters = trackSelectionParameters.buildUpon()
-                            .setPreferredTextLanguage("id")
+                            .setPreferredTextLanguage(targetLang)
                             .setSelectUndeterminedTextLanguage(true)
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !isSubtitleEnabled)
                             .build()
