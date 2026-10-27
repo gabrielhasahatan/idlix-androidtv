@@ -18,8 +18,10 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.io.File
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.UnknownHostException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
@@ -134,58 +136,223 @@ object ApiClient {
         chain.proceed(builder.build())
     }
 
-    private fun createCloudflareDoh(context: Context?): Dns {
-        return try {
-            val appCache = if (context != null) {
+    const val DNS_PROVIDER_GOOGLE = "google"
+    const val DNS_PROVIDER_CLOUDFLARE = "cloudflare"
+    const val DNS_PROVIDER_ADGUARD = "adguard"
+    const val DNS_PROVIDER_SYSTEM = "system"
+
+    private const val PREF_KEY_DOH_PROVIDER = "custom_doh_provider"
+    const val DEFAULT_DNS_PROVIDER = DNS_PROVIDER_GOOGLE
+
+    @Volatile
+    private var currentDnsProvider: String? = null
+
+    fun getDnsProvider(): String {
+        currentDnsProvider?.let { return it }
+        val saved = try {
+            val prefs = applicationContext?.getSharedPreferences("idlix_config", Context.MODE_PRIVATE)
+            prefs?.getString(PREF_KEY_DOH_PROVIDER, null)?.trim()
+        } catch (_: Exception) {
+            null
+        }
+        val provider = if (!saved.isNullOrBlank()) saved else DEFAULT_DNS_PROVIDER
+        currentDnsProvider = provider
+        return provider
+    }
+
+    fun setDnsProvider(newProvider: String) {
+        val trimmed = newProvider.trim().lowercase()
+        currentDnsProvider = trimmed
+        try {
+            val prefs = applicationContext?.getSharedPreferences("idlix_config", Context.MODE_PRIVATE)
+            prefs?.edit()?.putString(PREF_KEY_DOH_PROVIDER, trimmed)?.apply()
+        } catch (_: Exception) {}
+        clearDnsCache()
+    }
+
+    private data class CachedDnsRecord(
+        val addresses: List<InetAddress>,
+        val expiresAt: Long
+    )
+
+    private val dnsCache = ConcurrentHashMap<String, CachedDnsRecord>()
+    private const val CACHE_TTL_MS = 10 * 60 * 1000L // 10 minutes
+    private const val CIRCUIT_BREAKER_COOLDOWN_MS = 2 * 60 * 1000L // 2 minutes
+
+    @Volatile
+    private var circuitBreakerTrippedUntil: Long = 0L
+
+    @Volatile
+    private var consecutiveFailures: Int = 0
+
+    fun clearDnsCache() {
+        dnsCache.clear()
+        circuitBreakerTrippedUntil = 0L
+        consecutiveFailures = 0
+    }
+
+    private val bootstrapClient: OkHttpClient by lazy {
+        val appCache = applicationContext?.let { ctx ->
+            try {
+                Cache(File(ctx.cacheDir, "doh_cache"), 10L * 1024 * 1024)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        OkHttpClient.Builder()
+            .apply {
+                if (appCache != null) cache(appCache)
+            }
+            .connectTimeout(2500, TimeUnit.MILLISECONDS)
+            .readTimeout(2500, TimeUnit.MILLISECONDS)
+            .writeTimeout(2500, TimeUnit.MILLISECONDS)
+            .callTimeout(3000, TimeUnit.MILLISECONDS)
+            .build()
+    }
+
+    private fun buildDnsOverHttps(url: String, bootstrapIps: List<String>): DnsOverHttps {
+        val hosts = bootstrapIps.mapNotNull { ip ->
+            try {
+                InetAddress.getByName(ip)
+            } catch (_: Exception) {
+                null
+            }
+        }
+        return DnsOverHttps.Builder()
+            .client(bootstrapClient)
+            .url(url.toHttpUrl())
+            .bootstrapDnsHosts(hosts)
+            .includeIPv6(false)
+            .build()
+    }
+
+    private val googleDoh: DnsOverHttps by lazy {
+        buildDnsOverHttps(
+            url = "https://dns.google/dns-query",
+            bootstrapIps = listOf("8.8.8.8", "8.8.4.4")
+        )
+    }
+
+    private val cloudflareDoh: DnsOverHttps by lazy {
+        buildDnsOverHttps(
+            url = "https://cloudflare-dns.com/dns-query",
+            bootstrapIps = listOf("1.1.1.1", "1.0.0.1")
+        )
+    }
+
+    private val adguardDoh: DnsOverHttps by lazy {
+        buildDnsOverHttps(
+            url = "https://dns.adguard-dns.com/dns-query",
+            bootstrapIps = listOf("94.140.14.14", "94.140.15.15")
+        )
+    }
+
+    private fun getDohInstance(provider: String): DnsOverHttps? {
+        return when (provider.lowercase()) {
+            DNS_PROVIDER_GOOGLE -> googleDoh
+            DNS_PROVIDER_CLOUDFLARE -> cloudflareDoh
+            DNS_PROVIDER_ADGUARD -> adguardDoh
+            else -> null
+        }
+    }
+
+    private fun prioritizeIpv4(addresses: List<InetAddress>): List<InetAddress> {
+        val (ipv4, ipv6) = addresses.partition { it is Inet4Address }
+        return if (ipv4.isNotEmpty()) ipv4 + ipv6 else addresses
+    }
+
+    private val dynamicDns = object : Dns {
+        override fun lookup(hostname: String): List<InetAddress> {
+            val now = System.currentTimeMillis()
+
+            // 1. Fast in-memory cache check (0ms)
+            val cached = dnsCache[hostname]
+            if (cached != null && now < cached.expiresAt) {
+                return cached.addresses
+            }
+
+            val provider = getDnsProvider()
+
+            // If user explicitly configured System DNS (DoH Off)
+            if (provider == DNS_PROVIDER_SYSTEM) {
+                val resolved = prioritizeIpv4(Dns.SYSTEM.lookup(hostname))
+                dnsCache[hostname] = CachedDnsRecord(resolved, now + CACHE_TTL_MS)
+                return resolved
+            }
+
+            // 2. Circuit breaker check: if DoH has failed repeatedly, fallback immediately to system DNS
+            if (now < circuitBreakerTrippedUntil) {
+                return try {
+                    val resolved = prioritizeIpv4(Dns.SYSTEM.lookup(hostname))
+                    dnsCache[hostname] = CachedDnsRecord(resolved, now + CACHE_TTL_MS)
+                    resolved
+                } catch (e: Exception) {
+                    throw UnknownHostException("System DNS resolution failed for $hostname: ${e.message}")
+                }
+            }
+
+            // 3. Resolve using selected DoH provider
+            val doh = getDohInstance(provider)
+            if (doh != null) {
                 try {
-                    Cache(File(context.cacheDir, "doh_cache"), 10L * 1024 * 1024)
-                } catch (_: Exception) {
-                    null
-                }
-            } else null
-
-            val bootstrapClient = OkHttpClient.Builder()
-                .apply {
-                    if (appCache != null) cache(appCache)
-                }
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .build()
-
-            val doh = DnsOverHttps.Builder()
-                .client(bootstrapClient)
-                .url("https://cloudflare-dns.com/dns-query".toHttpUrl())
-                .bootstrapDnsHosts(
-                    InetAddress.getByName("1.1.1.1"),
-                    InetAddress.getByName("1.0.0.1"),
-                    InetAddress.getByName("2606:4700:4700::1111"),
-                    InetAddress.getByName("2606:4700:4700::1001")
-                )
-                .includeIPv6(true)
-                .build()
-
-            // Composite DNS with fallback to system Dns.SYSTEM if DoH fails
-            object : Dns {
-                override fun lookup(hostname: String): List<InetAddress> {
+                    val results = doh.lookup(hostname)
+                    if (results.isNotEmpty()) {
+                        consecutiveFailures = 0
+                        val prioritized = prioritizeIpv4(results)
+                        dnsCache[hostname] = CachedDnsRecord(prioritized, now + CACHE_TTL_MS)
+                        return prioritized
+                    }
+                } catch (e: Exception) {
+                    consecutiveFailures++
+                    if (consecutiveFailures >= 2) {
+                        circuitBreakerTrippedUntil = now + CIRCUIT_BREAKER_COOLDOWN_MS
+                    }
+                    // Fallback to system DNS
                     return try {
-                        doh.lookup(hostname)
-                    } catch (e: Exception) {
-                        try {
-                            Dns.SYSTEM.lookup(hostname)
-                        } catch (sysEx: Exception) {
-                            throw UnknownHostException("DNS resolution failed for $hostname: ${e.message} / ${sysEx.message}")
-                        }
+                        val resolved = prioritizeIpv4(Dns.SYSTEM.lookup(hostname))
+                        dnsCache[hostname] = CachedDnsRecord(resolved, now + CACHE_TTL_MS)
+                        resolved
+                    } catch (sysEx: Exception) {
+                        throw UnknownHostException("DNS resolution failed for $hostname: DoH failed (${e.message}) / System failed (${sysEx.message})")
                     }
                 }
             }
-        } catch (_: Exception) {
-            Dns.SYSTEM
+
+            // Fallback for unknown provider
+            val resolved = prioritizeIpv4(Dns.SYSTEM.lookup(hostname))
+            dnsCache[hostname] = CachedDnsRecord(resolved, now + CACHE_TTL_MS)
+            return resolved
+        }
+    }
+
+    suspend fun testDns(provider: String = getDnsProvider()): Result<String> = withContext(Dispatchers.IO) {
+        val start = System.currentTimeMillis()
+        val testHost = "streamapi.abdiworks.my.id"
+        try {
+            val addresses = when (provider.lowercase()) {
+                DNS_PROVIDER_SYSTEM -> Dns.SYSTEM.lookup(testHost)
+                else -> {
+                    val doh = getDohInstance(provider)
+                        ?: throw IllegalStateException("Unknown DNS provider: $provider")
+                    doh.lookup(testHost)
+                }
+            }
+            val duration = System.currentTimeMillis() - start
+            if (addresses.isEmpty()) {
+                Result.failure(Exception("No IP address returned"))
+            } else {
+                val ipString = addresses.first().hostAddress
+                Result.success("Resolved in ${duration}ms ($ipString)")
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .dns(createCloudflareDoh(applicationContext))
+            .dns(dynamicDns)
             .addInterceptor(headerInterceptor)
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BASIC

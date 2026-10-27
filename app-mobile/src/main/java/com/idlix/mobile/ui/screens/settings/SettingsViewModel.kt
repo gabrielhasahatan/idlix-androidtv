@@ -17,10 +17,14 @@ data class SettingsUiState(
     val activeSubdlKey: String = "",
     val backendUrl: String = "",
     val subdlKey: String = "",
+    val activeDnsProvider: String = ApiClient.DEFAULT_DNS_PROVIDER,
+    val selectedDnsProvider: String = ApiClient.DEFAULT_DNS_PROVIDER,
     val isTestingBackend: Boolean = false,
     val backendTestResult: String? = null,
     val isTestingSubdl: Boolean = false,
     val subdlTestResult: String? = null,
+    val isTestingDns: Boolean = false,
+    val dnsTestResult: String? = null,
     val cacheCleared: Boolean = false
 )
 
@@ -33,7 +37,9 @@ class SettingsViewModel(
             activeBackendUrl = ApiClient.getBaseUrl(),
             activeSubdlKey = SubdlRepository.getApiKey(),
             backendUrl = ApiClient.getBaseUrl(),
-            subdlKey = SubdlRepository.getApiKey()
+            subdlKey = SubdlRepository.getApiKey(),
+            activeDnsProvider = ApiClient.getDnsProvider(),
+            selectedDnsProvider = ApiClient.getDnsProvider()
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -130,6 +136,41 @@ class SettingsViewModel(
                 subdlTestResult = result.fold(
                     onSuccess = { it },
                     onFailure = { "Failed: ${it.localizedMessage ?: "Unknown network error"}" }
+                )
+            )
+        }
+    }
+
+    fun updateDnsProvider(provider: String) {
+        _uiState.value = _uiState.value.copy(selectedDnsProvider = provider, dnsTestResult = null)
+    }
+
+    fun saveDnsProvider() {
+        val target = _uiState.value.selectedDnsProvider
+        ApiClient.setDnsProvider(target)
+        val active = ApiClient.getDnsProvider()
+        _uiState.value = _uiState.value.copy(
+            activeDnsProvider = active,
+            selectedDnsProvider = active,
+            dnsTestResult = "DNS provider saved successfully!"
+        )
+    }
+
+    fun resetDnsProvider() {
+        val defaultProvider = ApiClient.DEFAULT_DNS_PROVIDER
+        _uiState.value = _uiState.value.copy(selectedDnsProvider = defaultProvider, dnsTestResult = null)
+    }
+
+    fun testDns() {
+        val target = _uiState.value.selectedDnsProvider
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isTestingDns = true, dnsTestResult = null)
+            val result = ApiClient.testDns(target)
+            _uiState.value = _uiState.value.copy(
+                isTestingDns = false,
+                dnsTestResult = result.fold(
+                    onSuccess = { it },
+                    onFailure = { "Failed: ${it.localizedMessage ?: "DNS resolution failed"}" }
                 )
             )
         }

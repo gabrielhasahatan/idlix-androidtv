@@ -1,8 +1,10 @@
 package com.idlix.mobile.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -30,7 +33,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +52,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.idlix.data.api.ApiClient
 import com.idlix.mobile.ui.theme.BackgroundDark
 import com.idlix.mobile.ui.theme.IdlixAccentCyan
 import com.idlix.mobile.ui.theme.IdlixRed
@@ -156,32 +163,47 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
                             onClick = { viewModel.testBackend() },
-                            enabled = !uiState.isTestingBackend
+                            enabled = !uiState.isTestingBackend,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             if (uiState.isTestingBackend) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = IdlixRed)
                             } else {
-                                Text("Test Connection", color = TextWhite)
+                                Text("Test Connection", color = TextWhite, maxLines = 1)
                             }
                         }
 
                         Button(
                             onClick = { viewModel.saveBackendUrl() },
-                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
+                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Text("Save URL")
+                            Text("Save URL", maxLines = 1)
                         }
+                    }
 
-                        OutlinedButton(
-                            onClick = { viewModel.resetBackendUrl() }
-                        ) {
-                            Text("Reset", color = TextDim)
-                        }
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    TextButton(
+                        onClick = { viewModel.resetBackendUrl() },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = TextDim
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Reset to Default", color = TextDim, fontSize = 12.sp)
                     }
                 }
             }
@@ -245,32 +267,165 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
                             onClick = { viewModel.testSubdl() },
-                            enabled = !uiState.isTestingSubdl
+                            enabled = !uiState.isTestingSubdl,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             if (uiState.isTestingSubdl) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), color = IdlixRed)
                             } else {
-                                Text("Test Key", color = TextWhite)
+                                Text("Test Key", color = TextWhite, maxLines = 1)
                             }
                         }
 
                         Button(
                             onClick = { viewModel.saveSubdlKey() },
-                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
+                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Text("Save Key")
+                            Text("Save Key", maxLines = 1)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    TextButton(
+                        onClick = { viewModel.resetSubdlKey() },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = TextDim
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Reset to Default", color = TextDim, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            // DNS over HTTPS (DoH) Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "DNS-over-HTTPS (DoH)",
+                        color = TextWhite,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Bypass pemblokiran DNS ISP & percepat loading streaming secara aman.",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val dnsProviders = listOf(
+                        Triple(ApiClient.DNS_PROVIDER_GOOGLE, "Google DNS (Recommended)", "Paling stabil & cepat di jaringan Indonesia"),
+                        Triple(ApiClient.DNS_PROVIDER_CLOUDFLARE, "Cloudflare DNS", "1.1.1.1 (bisa lambat/terblokir di beberapa ISP)"),
+                        Triple(ApiClient.DNS_PROVIDER_ADGUARD, "AdGuard DNS", "dns.adguard-dns.com"),
+                        Triple(ApiClient.DNS_PROVIDER_SYSTEM, "System Default", "Gunakan DNS bawaan ISP (DoH Nonaktif)")
+                    )
+
+                    dnsProviders.forEach { (id, title, desc) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.updateDnsProvider(id) }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = uiState.selectedDnsProvider == id,
+                                onClick = { viewModel.updateDnsProvider(id) },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = IdlixRed,
+                                    unselectedColor = TextDim
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = title,
+                                    color = if (uiState.selectedDnsProvider == id) TextWhite else TextMuted,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (uiState.selectedDnsProvider == id) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                                Text(
+                                    text = desc,
+                                    color = TextDim,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    if (uiState.dnsTestResult != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = uiState.dnsTestResult ?: "",
+                            color = if (uiState.dnsTestResult!!.contains("resolved", ignoreCase = true) || uiState.dnsTestResult!!.contains("success", ignoreCase = true)) Color(0xFF4CAF50) else IdlixRed,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel.testDns() },
+                            enabled = !uiState.isTestingDns,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            if (uiState.isTestingDns) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = IdlixRed)
+                            } else {
+                                Text("Test DNS", color = TextWhite, maxLines = 1)
+                            }
                         }
 
-                        OutlinedButton(
-                            onClick = { viewModel.resetSubdlKey() }
+                        Button(
+                            onClick = { viewModel.saveDnsProvider() },
+                            colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Text("Reset", color = TextDim)
+                            Text("Save DNS", maxLines = 1)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    TextButton(
+                        onClick = { viewModel.resetDnsProvider() },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = TextDim
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Reset to Default", color = TextDim, fontSize = 12.sp)
                     }
                 }
             }
@@ -298,7 +453,8 @@ fun SettingsScreen(
 
                     OutlinedButton(
                         onClick = { viewModel.clearImageCache() },
-                        enabled = !uiState.cacheCleared
+                        enabled = !uiState.cacheCleared,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         if (uiState.cacheCleared) {
                             Icon(Icons.Filled.Check, contentDescription = null, tint = Color(0xFF4CAF50))
@@ -325,7 +481,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Version 1.0.0 (Multi-Module Architecture)\nBuilt with Jetpack Compose & Media3 ExoPlayer",
+                        text = "Version 1.0.1 (Multi-Module Architecture)\nBuilt with Jetpack Compose & Media3 ExoPlayer",
                         color = TextMuted,
                         fontSize = 12.sp,
                         lineHeight = 18.sp
