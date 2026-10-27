@@ -117,6 +117,14 @@ fun SettingsScreen(
                         color = TextMuted,
                         fontSize = 12.sp
                     )
+                    if (uiState.activeBackendUrl.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Active: ${uiState.activeBackendUrl}",
+                            color = TextDim,
+                            fontSize = 11.sp
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -140,14 +148,17 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = uiState.backendTestResult ?: "",
-                            color = if (uiState.backendTestResult!!.contains("success", ignoreCase = true)) Color(0xFF4CAF50) else IdlixRed,
+                            color = if (uiState.backendTestResult!!.contains("success", ignoreCase = true) || uiState.backendTestResult!!.contains("valid", ignoreCase = true)) Color(0xFF4CAF50) else IdlixRed,
                             fontSize = 12.sp
                         )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         OutlinedButton(
                             onClick = { viewModel.testBackend() },
                             enabled = !uiState.isTestingBackend
@@ -164,6 +175,12 @@ fun SettingsScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
                         ) {
                             Text("Save URL")
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.resetBackendUrl() }
+                        ) {
+                            Text("Reset", color = TextDim)
                         }
                     }
                 }
@@ -220,14 +237,17 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = uiState.subdlTestResult ?: "",
-                            color = if (uiState.subdlTestResult!!.contains("valid", ignoreCase = true)) Color(0xFF4CAF50) else IdlixRed,
+                            color = if (uiState.subdlTestResult!!.contains("valid", ignoreCase = true) || uiState.subdlTestResult!!.contains("success", ignoreCase = true)) Color(0xFF4CAF50) else IdlixRed,
                             fontSize = 12.sp
                         )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         OutlinedButton(
                             onClick = { viewModel.testSubdl() },
                             enabled = !uiState.isTestingSubdl
@@ -244,6 +264,12 @@ fun SettingsScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = IdlixRed)
                         ) {
                             Text("Save Key")
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.resetSubdlKey() }
+                        ) {
+                            Text("Reset", color = TextDim)
                         }
                     }
                 }

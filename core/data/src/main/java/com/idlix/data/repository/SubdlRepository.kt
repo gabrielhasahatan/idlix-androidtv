@@ -46,6 +46,39 @@ object SubdlRepository {
         } catch (_: Exception) {}
     }
 
+    suspend fun testApiKey(targetKey: String): Result<String> = withContext(Dispatchers.IO) {
+        val trimmed = targetKey.trim()
+        if (trimmed.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("SubDL API key cannot be empty"))
+        }
+        val testEndpoint = "$BASE_URL?api_key=$trimmed&film_name=Avatar"
+        try {
+            val req = Request.Builder()
+                .url(testEndpoint)
+                .header("User-Agent", "Mozilla/5.0 (Android TV; Idlix)")
+                .get()
+                .build()
+            ApiClient.okHttpClient.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val body = resp.body?.string().orEmpty()
+                    val parsed = try {
+                        ApiClient.json.decodeFromString<SubdlResponse>(body)
+                    } catch (_: Exception) { null }
+
+                    if (parsed?.status == true) {
+                        Result.success("SubDL API key is valid (${parsed.subtitles.size} subtitles found)")
+                    } else {
+                        Result.failure(Exception("Invalid response or quota exceeded"))
+                    }
+                } else {
+                    Result.failure(Exception("HTTP error: ${resp.code}"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun searchAllSubtitles(
         title: String,
         type: String = "movie",

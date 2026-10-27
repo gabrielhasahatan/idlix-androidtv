@@ -26,9 +26,19 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
 class IdlixRepository(
-    private val idlixApi: IdlixApiService = ApiClient.idlixApi,
-    private val majorplayApi: MajorplayApiService = ApiClient.majorplayApi
+    private val idlixApiProvider: () -> IdlixApiService = { ApiClient.idlixApi },
+    private val majorplayApiProvider: () -> MajorplayApiService = { ApiClient.majorplayApi }
 ) {
+    constructor(
+        idlixApi: IdlixApiService,
+        majorplayApi: MajorplayApiService
+    ) : this(
+        idlixApiProvider = { idlixApi },
+        majorplayApiProvider = { majorplayApi }
+    )
+
+    private val idlixApi: IdlixApiService get() = idlixApiProvider()
+    private val majorplayApi: MajorplayApiService get() = majorplayApiProvider()
 
     suspend fun getMovies(
         page: Int = 1,
