@@ -100,6 +100,13 @@ fun SettingsScreen(
     var isTestingSubdl by remember { mutableStateOf(false) }
     var isSubdlTestSuccess by remember { mutableStateOf(false) }
 
+    // --- DNS State ---
+    var currentActiveDns by remember { mutableStateOf(ApiClient.getDnsProvider()) }
+    var selectedDns by remember { mutableStateOf(currentActiveDns) }
+    var dnsTestStatus by remember { mutableStateOf<String?>(null) }
+    var isTestingDns by remember { mutableStateOf(false) }
+    var isDnsTestSuccess by remember { mutableStateOf(false) }
+
     // --- Global Save Notification ---
     var saveMessage by remember { mutableStateOf<String?>(null) }
 
@@ -179,6 +186,31 @@ fun SettingsScreen(
             isTestingSubdl = false
             isSubdlTestSuccess = result.first
             subdlTestStatus = result.second
+        }
+    }
+
+    // Test DNS
+    fun runTestDns(targetProvider: String) {
+        scope.launch {
+            isTestingDns = true
+            dnsTestStatus = "Testing DNS resolution..."
+            saveMessage = null
+
+            val result = withContext(Dispatchers.IO) {
+                ApiClient.testDns(targetProvider)
+            }
+
+            isTestingDns = false
+            result.fold(
+                onSuccess = {
+                    isDnsTestSuccess = true
+                    dnsTestStatus = it
+                },
+                onFailure = {
+                    isDnsTestSuccess = false
+                    dnsTestStatus = "Failed: ${it.localizedMessage ?: "Unknown DNS error"}"
+                }
+            )
         }
     }
 
@@ -537,6 +569,137 @@ fun SettingsScreen(
         }
 
         // ==========================================
+        // SECTION: DNS-OVER-HTTPS (DoH)
+        // ==========================================
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(NetflixDarkCard, RoundedCornerShape(8.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Dns,
+                    contentDescription = null,
+                    tint = NetflixWhite,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.doh_header),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = NetflixWhite
+                    )
+                    Text(
+                        text = stringResource(R.string.doh_desc),
+                        color = NetflixLightGray,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            val dnsOptions = listOf(
+                Pair(ApiClient.DNS_PROVIDER_GOOGLE, stringResource(R.string.dns_google)),
+                Pair(ApiClient.DNS_PROVIDER_CLOUDFLARE, stringResource(R.string.dns_cloudflare)),
+                Pair(ApiClient.DNS_PROVIDER_ADGUARD, stringResource(R.string.dns_adguard)),
+                Pair(ApiClient.DNS_PROVIDER_SYSTEM, stringResource(R.string.dns_system))
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                dnsOptions.forEach { (id, label) ->
+                    val isSelected = selectedDns == id
+                    Button(
+                        onClick = {
+                            selectedDns = id
+                            dnsTestStatus = null
+                            saveMessage = null
+                        },
+                        colors = ButtonDefaults.colors(
+                            containerColor = if (isSelected) NetflixRed else NetflixBlack.copy(alpha = 0.5f),
+                            focusedContainerColor = if (isSelected) NetflixRed else NetflixWhite,
+                            contentColor = if (isSelected) NetflixWhite else NetflixLightGray,
+                            focusedContentColor = if (isSelected) NetflixWhite else NetflixBlack
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                        modifier = Modifier.height(38.dp)
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Button(
+                    onClick = { runTestDns(selectedDns) },
+                    enabled = !isTestingDns,
+                    colors = ButtonDefaults.colors(
+                        containerColor = NetflixBlack,
+                        focusedContainerColor = NetflixWhite,
+                        contentColor = NetflixWhite,
+                        focusedContentColor = NetflixBlack
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Text(
+                        text = if (isTestingDns) stringResource(R.string.testing_dns) else stringResource(R.string.test_dns),
+                        fontSize = 12.sp
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        selectedDns = ApiClient.DEFAULT_DNS_PROVIDER
+                        dnsTestStatus = null
+                        saveMessage = null
+                    },
+                    colors = ButtonDefaults.colors(
+                        containerColor = NetflixBlack.copy(alpha = 0.5f),
+                        focusedContainerColor = NetflixWhite,
+                        contentColor = NetflixLightGray,
+                        focusedContentColor = NetflixBlack
+                    ),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Text(text = stringResource(R.string.reset_default_dns), fontSize = 12.sp)
+                }
+            }
+
+            if (dnsTestStatus != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (isDnsTestSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                        contentDescription = null,
+                        tint = if (isDnsTestSuccess) Color(0xFF4CAF50) else NetflixRed,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = dnsTestStatus ?: "",
+                        color = if (isDnsTestSuccess) Color(0xFF4CAF50) else NetflixRed,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // ==========================================
         // SECTION 3: SAVE ALL SETTINGS ACTION
         // ==========================================
         Row(
@@ -556,6 +719,11 @@ fun SettingsScreen(
                     SubdlRepository.setApiKey(inputApiKey)
                     currentActiveApiKey = SubdlRepository.getApiKey()
                     inputApiKey = currentActiveApiKey
+
+                    // Save DNS Provider
+                    ApiClient.setDnsProvider(selectedDns)
+                    currentActiveDns = ApiClient.getDnsProvider()
+                    selectedDns = currentActiveDns
 
                     saveMessage = context.getString(R.string.settings_saved_success)
                 },

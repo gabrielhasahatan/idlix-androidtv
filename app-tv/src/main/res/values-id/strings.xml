@@ -96,4 +96,14 @@
     <string name="play_next_episode">Putar Sekarang</string>
     <string name="next_episode_in_seconds">Putar otomatis dalam %ds</string>
     <string name="dismiss">Tutup</string>
+    <string name="doh_header">DNS-over-HTTPS (DoH)</string>
+    <string name="doh_desc">Bypass pemblokiran DNS ISP &amp; percepat pemutaran streaming film/serial.</string>
+    <string name="dns_google">Google DNS (Direkomendasikan)</string>
+    <string name="dns_cloudflare">Cloudflare DNS</string>
+    <string name="dns_adguard">AdGuard DNS</string>
+    <string name="dns_system">Bawaan Sistem (DoH Nonaktif)</string>
+    <string name="test_dns">Uji DNS</string>
+    <string name="testing_dns">Menguji DNS...</string>
+    <string name="reset_default_dns">Reset Default DNS</string>
+    <string name="dns_saved_success">Provider DNS berhasil disimpan!</string>
 </resources>

@@ -7,6 +7,7 @@ import com.idlix.data.api.ApiClient
 import com.idlix.data.model.SubdlResponse
 import com.idlix.data.model.SubdlSubtitle
 import com.idlix.data.model.SubtitleTrack
+import com.idlix.data.util.LocaleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -44,6 +45,39 @@ object SubdlRepository {
             val prefs = ApiClient.applicationContext?.getSharedPreferences("idlix_config", Context.MODE_PRIVATE)
             prefs?.edit()?.putString(PREF_KEY_SUBDL_API_KEY, trimmed)?.apply()
         } catch (_: Exception) {}
+    }
+
+    suspend fun testApiKey(targetKey: String): Result<String> = withContext(Dispatchers.IO) {
+        val trimmed = targetKey.trim()
+        if (trimmed.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("SubDL API key cannot be empty"))
+        }
+        val testEndpoint = "$BASE_URL?api_key=$trimmed&film_name=Avatar"
+        try {
+            val req = Request.Builder()
+                .url(testEndpoint)
+                .header("User-Agent", "Mozilla/5.0 (Android TV; Idlix)")
+                .get()
+                .build()
+            ApiClient.okHttpClient.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val body = resp.body?.string().orEmpty()
+                    val parsed = try {
+                        ApiClient.json.decodeFromString<SubdlResponse>(body)
+                    } catch (_: Exception) { null }
+
+                    if (parsed?.status == true) {
+                        Result.success("SubDL API key is valid (${parsed.subtitles.size} subtitles found)")
+                    } else {
+                        Result.failure(Exception("Invalid response or quota exceeded"))
+                    }
+                } else {
+                    Result.failure(Exception("HTTP error: ${resp.code}"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun searchAllSubtitles(
@@ -127,6 +161,29 @@ object SubdlRepository {
         }
     }
 
+    suspend fun fetchSubtitleForLanguage(
+        title: String,
+        type: String = "movie",
+        tmdbId: Long? = null,
+        imdbId: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        targetLang: String = LocaleHelper.getPreferredLanguage(),
+        context: Context
+    ): SubtitleTrack? = withContext(Dispatchers.IO) {
+        val langParam = if (targetLang.equals("id", ignoreCase = true)) "ID" else "EN"
+        val allSubs = searchAllSubtitles(title, type, tmdbId, imdbId, season, episode, languages = langParam)
+        val chosen = allSubs.firstOrNull {
+            if (langParam == "ID") {
+                it.language.equals("ID", ignoreCase = true) || it.lang.equals("indonesian", ignoreCase = true)
+            } else {
+                it.language.equals("EN", ignoreCase = true) || it.lang.equals("english", ignoreCase = true)
+            }
+        } ?: allSubs.firstOrNull() ?: return@withContext null
+
+        downloadSubtitle(chosen, context)
+    }
+
     suspend fun fetchIndonesianSubtitle(
         title: String,
         type: String = "movie",
@@ -135,14 +192,16 @@ object SubdlRepository {
         season: Int? = null,
         episode: Int? = null,
         context: Context
-    ): SubtitleTrack? = withContext(Dispatchers.IO) {
-        val allSubs = searchAllSubtitles(title, type, tmdbId, imdbId, season, episode, languages = "ID")
-        val chosen = allSubs.firstOrNull {
-            it.language.equals("ID", ignoreCase = true) || it.lang.equals("indonesian", ignoreCase = true)
-        } ?: allSubs.firstOrNull() ?: return@withContext null
-
-        downloadSubtitle(chosen, context)
-    }
+    ): SubtitleTrack? = fetchSubtitleForLanguage(
+        title = title,
+        type = type,
+        tmdbId = tmdbId,
+        imdbId = imdbId,
+        season = season,
+        episode = episode,
+        targetLang = "id",
+        context = context
+    )
 
     private fun downloadAndExtractSrt(zipUrl: String, context: Context, filePrefix: String): File? {
         return try {

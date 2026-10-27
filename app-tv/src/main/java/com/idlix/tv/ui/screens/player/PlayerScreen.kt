@@ -33,11 +33,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -135,6 +138,7 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -144,6 +148,7 @@ fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(true) }
     var isScrubbing by remember { mutableStateOf(false) }
     var userInteractionCount by remember { mutableIntStateOf(0) }
+    var wasPlayingBeforeBackground by remember { mutableStateOf(false) }
 
     val remainingMs = if (duration > 0L) (duration - currentPos).coerceAtLeast(0L) else Long.MAX_VALUE
     val isNearEnd = duration > 60_000L && remainingMs in 0L..90_000L
@@ -438,14 +443,17 @@ fun PlayerScreen(
                 ExoPlayer.Builder(context, renderersFactory)
                     .setLoadControl(loadControl)
                     .build().apply {
-                    val activeSub = resolved.subtitles.firstOrNull { it.lang == "id" }
+                    val prefLang = com.idlix.data.util.LocaleHelper.getPreferredLanguage()
+                    val fallbackLang = if (prefLang == "id") "en" else "id"
+                    val activeSub = resolved.subtitles.firstOrNull { it.lang.equals(prefLang, ignoreCase = true) }
+                        ?: resolved.subtitles.firstOrNull { it.lang.equals(fallbackLang, ignoreCase = true) }
                         ?: resolved.subtitles.firstOrNull()
 
                     val finalMediaSource = buildMediaSource(resolved.hlsMasterUrl, activeSub)
                     setMediaSource(finalMediaSource)
 
                     trackSelectionParameters = trackSelectionParameters.buildUpon()
-                        .setPreferredTextLanguage("id")
+                        .setPreferredTextLanguage(prefLang)
                         .setSelectUndeterminedTextLanguage(true)
                         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                         .build()
@@ -454,7 +462,11 @@ fun PlayerScreen(
                     if (uiState.initialPositionMs > 0) {
                         seekTo(uiState.initialPositionMs)
                     }
-                    playWhenReady = true
+                    val isForeground = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                    playWhenReady = isForeground
+                    if (!isForeground) {
+                        wasPlayingBeforeBackground = true
+                    }
                 }
             }
 
@@ -497,7 +509,7 @@ fun PlayerScreen(
                 }
             }
 
-            DisposableEffect(exoPlayer) {
+            DisposableEffect(lifecycleOwner, exoPlayer) {
                 val playerListener = object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_ENDED) {
@@ -509,7 +521,41 @@ fun PlayerScreen(
                 }
                 exoPlayer.addListener(playerListener)
 
+                val lifecycleObserver = LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_PAUSE -> {
+                            val shouldResume = exoPlayer.playWhenReady && exoPlayer.playbackState != Player.STATE_ENDED
+                            wasPlayingBeforeBackground = shouldResume
+                            if (shouldResume) {
+                                exoPlayer.pause()
+                            }
+                            try {
+                                val currentPosition = exoPlayer.currentPosition
+                                val totalDuration = exoPlayer.duration
+                                if (totalDuration > 0) {
+                                    viewModel.saveProgress(currentPosition, totalDuration)
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        Lifecycle.Event.ON_STOP -> {
+                            if (exoPlayer.playWhenReady) {
+                                wasPlayingBeforeBackground = true
+                                exoPlayer.pause()
+                            }
+                        }
+                        Lifecycle.Event.ON_RESUME -> {
+                            if (wasPlayingBeforeBackground) {
+                                exoPlayer.play()
+                                wasPlayingBeforeBackground = false
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
+
                 onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
                     try {
                         exoPlayer.removeListener(playerListener)
                         val finalPos = exoPlayer.currentPosition
@@ -584,8 +630,9 @@ fun PlayerScreen(
                     viewModel.toggleSubtitle()
                     val trackSelector = exoPlayer.trackSelectionParameters.buildUpon()
                     if (willBeEnabled) {
+                        val prefLang = com.idlix.data.util.LocaleHelper.getPreferredLanguage()
                         trackSelector
-                            .setPreferredTextLanguage(uiState.selectedSubtitle?.lang ?: "id")
+                            .setPreferredTextLanguage(uiState.selectedSubtitle?.lang ?: prefLang)
                             .setSelectUndeterminedTextLanguage(true)
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                     } else {

@@ -26,9 +26,19 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
 class IdlixRepository(
-    private val idlixApi: IdlixApiService = ApiClient.idlixApi,
-    private val majorplayApi: MajorplayApiService = ApiClient.majorplayApi
+    private val idlixApiProvider: () -> IdlixApiService = { ApiClient.idlixApi },
+    private val majorplayApiProvider: () -> MajorplayApiService = { ApiClient.majorplayApi }
 ) {
+    constructor(
+        idlixApi: IdlixApiService,
+        majorplayApi: MajorplayApiService
+    ) : this(
+        idlixApiProvider = { idlixApi },
+        majorplayApiProvider = { majorplayApi }
+    )
+
+    private val idlixApi: IdlixApiService get() = idlixApiProvider()
+    private val majorplayApi: MajorplayApiService get() = majorplayApiProvider()
 
     suspend fun getMovies(
         page: Int = 1,
@@ -343,16 +353,18 @@ class IdlixRepository(
             }
 
             val finalSubtitles = redeemRes.subtitles.toMutableList()
-            val hasIndoSub = finalSubtitles.any { it.lang == "id" }
+            val prefLang = com.idlix.data.util.LocaleHelper.getPreferredLanguage()
+            val hasPrefSub = finalSubtitles.any { it.lang.equals(prefLang, ignoreCase = true) }
 
             // SubDL Third-party Subtitle Fallback:
-            // If the content has no Indonesian subtitle (or no subtitles at all), fetch from subdl.com
-            if (!hasIndoSub) {
+            // If the content has no subtitle matching preferred device language (Indonesian or English fallback), fetch from subdl.com
+            if (!hasPrefSub) {
                 try {
                     val subdlSub = ApiClient.applicationContext?.let { ctx ->
-                        SubdlRepository.fetchIndonesianSubtitle(
+                        SubdlRepository.fetchSubtitleForLanguage(
                             title = contentTitle,
                             type = if (targetType == "episode") "tv" else "movie",
+                            targetLang = prefLang,
                             context = ctx
                         )
                     }
