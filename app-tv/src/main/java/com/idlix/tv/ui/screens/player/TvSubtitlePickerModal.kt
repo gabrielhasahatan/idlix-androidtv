@@ -127,7 +127,6 @@ fun TvSubtitlePickerModal(
                 .clickable(enabled = false) {}
                 .padding(24.dp)
         ) {
-            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -230,7 +229,6 @@ fun TvSubtitlePickerModal(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // 1. Turn Off Subtitles
                         item {
                             val isOffSelected = !isSubtitleEnabled || selectedSubtitle == null
                             SubtitleOptionCard(
@@ -243,7 +241,6 @@ fun TvSubtitlePickerModal(
                             )
                         }
 
-                        // 2. Default & Stream Subtitles
                         if (availableSubtitles.isNotEmpty()) {
                             item {
                                 Text(
@@ -267,7 +264,6 @@ fun TvSubtitlePickerModal(
                             }
                         }
 
-                        // 3. SubDL.com Subtitles Header & Actions
                         item {
                             Column(modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) {
                                 Row(

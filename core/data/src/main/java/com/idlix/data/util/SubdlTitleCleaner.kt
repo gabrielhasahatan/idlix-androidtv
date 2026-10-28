@@ -26,13 +26,12 @@ object SubdlTitleCleaner {
         var text = rawTitle.trim()
         var extractedYear: Int? = null
 
-        // 1. Extract year from parentheses (e.g., "(2024)")
+        // Extract release year from parentheses or trailing 4-digit token
         val parensMatch = YEAR_PARENS_REGEX.find(text)
         if (parensMatch != null) {
             extractedYear = parensMatch.groupValues[1].toIntOrNull()
             text = text.replaceRange(parensMatch.range, " ").trim()
         } else {
-            // 2. Check for standalone 4-digit year at end (e.g. "Dune 2024")
             val endMatch = YEAR_AT_END_REGEX.find(text)
             if (endMatch != null) {
                 extractedYear = endMatch.groupValues[1].toIntOrNull()
@@ -40,15 +39,11 @@ object SubdlTitleCleaner {
             }
         }
 
-        // 3. Remove series / episode / tag noise
         for (pattern in NOISE_PATTERNS) {
             text = text.replace(pattern, " ")
         }
 
-        // 4. Remove trailing dash noise (e.g. " - Episode 2" or " -")
         text = text.replace(TRAILING_DASH_NOISE, "")
-
-        // 5. Collapse duplicate whitespace
         val cleaned = text.replace(Regex("""\s+"""), " ").trim(' ', '-', ':', '_')
 
         return CleanedTitle(

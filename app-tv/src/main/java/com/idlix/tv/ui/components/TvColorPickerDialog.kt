@@ -120,7 +120,6 @@ fun TvColorPickerDialog(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header
             Text(
                 text = stringResource(R.string.color_picker_title),
                 color = NetflixWhite,
@@ -128,7 +127,6 @@ fun TvColorPickerDialog(
                 fontWeight = FontWeight.Bold
             )
 
-            // Current vs New preview swatch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -167,7 +165,6 @@ fun TvColorPickerDialog(
                 }
             }
 
-            // HSV Panel
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = if (isHsvInteracting) "Editing Saturation / Value (Press Back to finish)" else "Saturation & Brightness (Press OK to adjust)",
@@ -222,7 +219,6 @@ fun TvColorPickerDialog(
                 )
             }
 
-            // Hue Bar
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "Hue", color = NetflixLightGray, fontSize = 11.sp)
                 HueBar(
@@ -252,7 +248,6 @@ fun TvColorPickerDialog(
                 )
             }
 
-            // Alpha Bar (optional)
             if (supportsAlpha) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -289,7 +284,6 @@ fun TvColorPickerDialog(
                 }
             }
 
-            // HEX Input field
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -324,7 +318,6 @@ fun TvColorPickerDialog(
                 )
             }
 
-            // Recent Custom Colors (if any)
             if (recentColors.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(

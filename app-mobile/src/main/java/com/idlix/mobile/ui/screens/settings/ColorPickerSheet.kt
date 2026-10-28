@@ -83,7 +83,6 @@ fun ColorPickerSheet(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -96,7 +95,6 @@ fun ColorPickerSheet(
                     fontWeight = FontWeight.Bold
                 )
 
-                // Preview Circle
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -105,7 +103,6 @@ fun ColorPickerSheet(
                 )
             }
 
-            // Interactive HSV Panel (Saturation & Value)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -145,7 +142,6 @@ fun ColorPickerSheet(
                 )
             }
 
-            // Hue Slider
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "Hue", color = TextDim, fontSize = 12.sp)
                 Box(
@@ -180,7 +176,6 @@ fun ColorPickerSheet(
                 }
             }
 
-            // Alpha Slider (if supported)
             if (supportsAlpha) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
@@ -228,7 +223,6 @@ fun ColorPickerSheet(
                 }
             }
 
-            // Hex Input
             OutlinedTextField(
                 value = hexInput,
                 onValueChange = {
@@ -248,7 +242,6 @@ fun ColorPickerSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Preset / Recent Swatches
             val swatchesToShow = (recentColors + presetColors).distinct().take(8)
             if (swatchesToShow.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -258,33 +251,40 @@ fun ColorPickerSheet(
                         fontSize = 12.sp
                     )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         swatchesToShow.forEach { col ->
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .background(Color(col), CircleShape)
-                                    .border(1.5.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+                                    .size(40.dp)
                                     .clickable {
                                         state.setColor(col)
                                         hexInput = state.currentHex
-                                    }
-                            )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(Color(col), CircleShape)
+                                        .border(1.5.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
                 ) {
                     Text(text = stringResource(R.string.cancel), color = TextWhite)
                 }
@@ -295,7 +295,9 @@ fun ColorPickerSheet(
                         onDismiss()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
                 ) {
                     Text(text = stringResource(R.string.apply), color = Color.White)
                 }

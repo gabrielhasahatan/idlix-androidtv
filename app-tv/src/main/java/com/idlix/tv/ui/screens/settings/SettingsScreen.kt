@@ -82,7 +82,6 @@ fun SettingsScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollState = rememberScrollState()
 
-    // --- Backend API State ---
     var currentActiveUrl by remember { mutableStateOf(ApiClient.getBaseUrl()) }
     var inputUrl by remember { mutableStateOf(currentActiveUrl) }
     var isUrlInputFocused by remember { mutableStateOf(false) }
@@ -91,7 +90,6 @@ fun SettingsScreen(
     var isTestingBackend by remember { mutableStateOf(false) }
     var isBackendTestSuccess by remember { mutableStateOf(false) }
 
-    // --- SubDL API Key State ---
     var currentActiveApiKey by remember { mutableStateOf(SubdlRepository.getApiKey()) }
     var inputApiKey by remember { mutableStateOf(currentActiveApiKey) }
     var isApiKeyInputFocused by remember { mutableStateOf(false) }
@@ -101,17 +99,14 @@ fun SettingsScreen(
     var isTestingSubdl by remember { mutableStateOf(false) }
     var isSubdlTestSuccess by remember { mutableStateOf(false) }
 
-    // --- DNS State ---
     var currentActiveDns by remember { mutableStateOf(ApiClient.getDnsProvider()) }
     var selectedDns by remember { mutableStateOf(currentActiveDns) }
     var dnsTestStatus by remember { mutableStateOf<String?>(null) }
     var isTestingDns by remember { mutableStateOf(false) }
     var isDnsTestSuccess by remember { mutableStateOf(false) }
 
-    // --- Global Save Notification ---
     var saveMessage by remember { mutableStateOf<String?>(null) }
 
-    // Test Backend API
     fun runTestBackend(targetUrl: String) {
         scope.launch {
             isTestingBackend = true
@@ -247,9 +242,6 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION 1: BACKEND API CONFIGURATION
-        // ==========================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -392,9 +384,6 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION 2: THIRD-PARTY SUBTITLE (SUBDL)
-        // ==========================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -569,16 +558,10 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION: PLAYER & SUBTITLE APPEARANCE
-        // ==========================================
         PlayerAppearanceSection(
             onOpenPositionEditor = onOpenSubtitlePositionEditor
         )
 
-        // ==========================================
-        // SECTION: DNS-OVER-HTTPS (DoH)
-        // ==========================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -707,9 +690,6 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION 3: SAVE ALL SETTINGS ACTION
-        // ==========================================
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),

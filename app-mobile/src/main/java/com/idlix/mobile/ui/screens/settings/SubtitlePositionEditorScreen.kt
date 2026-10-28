@@ -79,10 +79,12 @@ fun SubtitlePositionEditorScreen(
     val appearance by PlayerAppearanceStore.appearance.collectAsState()
     val state = rememberPositionEditorState(appearance)
 
-    val sampleCues = remember {
+    val sampleText1 = stringResource(R.string.subtitle_preview_sample_1)
+    val sampleText2 = stringResource(R.string.subtitle_preview_sample_2)
+    val sampleCues = remember(sampleText1, sampleText2) {
         listOf(
             Cue.Builder()
-                .setText("Geser subtitle dengan sentuhan atau tombol panah.\nPosisikan di mana saja dengan nyaman.")
+                .setText("$sampleText1\n$sampleText2")
                 .build()
         )
     }
@@ -95,7 +97,6 @@ fun SubtitlePositionEditorScreen(
         val screenW = maxWidth
         val screenH = maxHeight
 
-        // 1. Simulated 2.39:1 video box in center
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -104,7 +105,7 @@ fun SubtitlePositionEditorScreen(
                 .background(Color(0xFF14171E))
         ) {
             Text(
-                text = "Area Video (2.39:1 Cinematic Letterbox)",
+                text = "Area Video (2.39:1)",
                 color = Color.White.copy(alpha = 0.2f),
                 fontSize = 12.sp,
                 modifier = Modifier
@@ -113,7 +114,6 @@ fun SubtitlePositionEditorScreen(
             )
         }
 
-        // 2. Safe Boundary Outline
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -125,7 +125,6 @@ fun SubtitlePositionEditorScreen(
                 )
         )
 
-        // Center Guideline (subtle vertical line)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -140,7 +139,6 @@ fun SubtitlePositionEditorScreen(
             )
         }
 
-        // 3. Live Subtitle Preview with Touch Dragging
         val draftAppearance = remember(appearance, state.posX, state.posY) {
             appearance.copy(subtitlePosX = state.posX, subtitlePosY = state.posY)
         }
@@ -170,7 +168,6 @@ fun SubtitlePositionEditorScreen(
 
         val isSnappedToCenter = kotlin.math.abs(state.posX - 0.50f) < 0.005f
 
-        // 4. Top Overlay Bar (Back, Coordinates, Reset, Snap, Save)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -208,10 +205,9 @@ fun SubtitlePositionEditorScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Snap Center button
                 OutlinedButton(
                     onClick = { state.nudge(0.50f - state.posX, 0f) },
-                    modifier = Modifier.height(34.dp)
+                    modifier = Modifier.height(40.dp)
                 ) {
                     Icon(
                         Icons.Default.CenterFocusStrong,
@@ -223,10 +219,9 @@ fun SubtitlePositionEditorScreen(
                     Text("Center", color = TextWhite, fontSize = 11.sp)
                 }
 
-                // Reset button
                 OutlinedButton(
                     onClick = { state.resetToDefault() },
-                    modifier = Modifier.height(34.dp)
+                    modifier = Modifier.height(40.dp)
                 ) {
                     Icon(
                         Icons.Default.Refresh,
@@ -238,14 +233,13 @@ fun SubtitlePositionEditorScreen(
                     Text(stringResource(R.string.reset), color = TextWhite, fontSize = 11.sp)
                 }
 
-                // Save button
                 Button(
                     onClick = {
                         state.commit()
                         onBack()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
-                    modifier = Modifier.height(34.dp)
+                    modifier = Modifier.height(40.dp)
                 ) {
                     Icon(
                         Icons.Default.Check,
@@ -259,70 +253,68 @@ fun SubtitlePositionEditorScreen(
             }
         }
 
-        // 5. Bottom Floating Fine Nudge Controls (Left bottom corner)
         Row(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.70f), RoundedCornerShape(12.dp))
-                .padding(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Fine-tune label
-            Text(
-                text = "Nudge:",
-                color = TextDim,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(horizontal = 6.dp)
-            )
-
-            // Left
-            IconButton(
-                onClick = { state.nudge(-0.01f, 0f, snapCenter = true) },
-                modifier = Modifier.size(34.dp)
+            Row(
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.70f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", tint = TextWhite)
+                Text(
+                    text = "Nudge:",
+                    color = TextDim,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+
+                IconButton(
+                    onClick = { state.nudge(-0.01f, 0f, snapCenter = true) },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Left", tint = TextWhite)
+                }
+
+                IconButton(
+                    onClick = { state.nudge(0f, -0.01f, snapCenter = true) },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Up", tint = TextWhite)
+                }
+
+                IconButton(
+                    onClick = { state.nudge(0f, 0.01f, snapCenter = true) },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down", tint = TextWhite)
+                }
+
+                IconButton(
+                    onClick = { state.nudge(0.01f, 0f, snapCenter = true) },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", tint = TextWhite)
+                }
             }
 
-            // Up
-            IconButton(
-                onClick = { state.nudge(0f, -0.01f, snapCenter = true) },
-                modifier = Modifier.size(34.dp)
+            Box(
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.60f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Up", tint = TextWhite)
+                Text(
+                    text = stringResource(R.string.editor_hint_mobile),
+                    color = TextWhite.copy(alpha = 0.8f),
+                    fontSize = 11.sp
+                )
             }
-
-            // Down
-            IconButton(
-                onClick = { state.nudge(0f, 0.01f, snapCenter = true) },
-                modifier = Modifier.size(34.dp)
-            ) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Down", tint = TextWhite)
-            }
-
-            // Right
-            IconButton(
-                onClick = { state.nudge(0.01f, 0f, snapCenter = true) },
-                modifier = Modifier.size(34.dp)
-            ) {
-                Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Right", tint = TextWhite)
-            }
-        }
-
-        // 6. Bottom hint banner (Right bottom)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.60f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.editor_hint_mobile),
-                color = TextWhite.copy(alpha = 0.8f),
-                fontSize = 11.sp
-            )
         }
     }
 }

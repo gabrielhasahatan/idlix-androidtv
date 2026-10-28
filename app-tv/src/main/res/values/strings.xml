@@ -127,7 +127,7 @@
     <string name="box_black_50">Black 50%</string>
     <string name="box_black_75">Black 75%</string>
     <string name="box_black_solid">Black Solid</string>
-    <string name="color_custom">Custom 🎨</string>
+    <string name="color_custom">Custom</string>
     <string name="color_recent">Recent Custom Colors</string>
     <string name="color_picker_title">Color Picker</string>
     <string name="hex_label">HEX Color Code (#RRGGBB)</string>

@@ -188,7 +188,6 @@ fun PlayerAppearanceSection(
             }
         }
 
-        // 1. Player Background Color
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.player_bg_color),
@@ -230,7 +229,6 @@ fun PlayerAppearanceSection(
             }
         }
 
-        // 2. Subtitle Text Size
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.subtitle_text_size),
@@ -270,7 +268,6 @@ fun PlayerAppearanceSection(
             }
         }
 
-        // 3. Subtitle Text Color
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.subtitle_text_color),
@@ -312,7 +309,6 @@ fun PlayerAppearanceSection(
             }
         }
 
-        // 4. Subtitle Box Background Color
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.subtitle_box_color),

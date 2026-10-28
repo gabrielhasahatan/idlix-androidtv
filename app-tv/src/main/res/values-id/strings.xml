@@ -127,7 +127,7 @@
     <string name="box_black_50">Hitam 50%</string>
     <string name="box_black_75">Hitam 75%</string>
     <string name="box_black_solid">Hitam Solid</string>
-    <string name="color_custom">Kustom 🎨</string>
+    <string name="color_custom">Kustom</string>
     <string name="color_recent">Warna Kustom Terakhir</string>
     <string name="color_picker_title">Pilih Warna</string>
     <string name="hex_label">Kode Warna HEX (#RRGGBB)</string>

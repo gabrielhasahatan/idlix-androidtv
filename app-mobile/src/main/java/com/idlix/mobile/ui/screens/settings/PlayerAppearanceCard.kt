@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
@@ -82,7 +81,6 @@ fun PlayerAppearanceCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
             Column {
                 Text(
                     text = stringResource(R.string.player_appearance_header),
@@ -98,7 +96,6 @@ fun PlayerAppearanceCard(
                 )
             }
 
-            // 16:9 Live Preview Box (simulating 2.39:1 movie inside 16:9 display)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -107,7 +104,6 @@ fun PlayerAppearanceCard(
                     .background(Color(appearance.backgroundColor))
                     .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
             ) {
-                // Simulated 2.39:1 video viewport in center
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -125,7 +121,6 @@ fun PlayerAppearanceCard(
                     )
                 }
 
-                // Render subtitle sample text using posX and posY fractions
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val boxW = maxWidth
                     val boxH = maxHeight
@@ -154,7 +149,7 @@ fun PlayerAppearanceCard(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "Contoh Subtitle Video",
+                            text = stringResource(R.string.subtitle_preview_sample_1),
                             color = Color(appearance.subtitleTextColor),
                             fontSize = fontSizeSp,
                             fontWeight = FontWeight.SemiBold,
@@ -164,9 +159,6 @@ fun PlayerAppearanceCard(
                 }
             }
 
-            // ================================================================
-            // 1. Warna Background Player (7 Circles evenly spaced across width)
-            // ================================================================
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = stringResource(R.string.player_bg_color),
@@ -198,9 +190,6 @@ fun PlayerAppearanceCard(
                 }
             }
 
-            // ================================================================
-            // 2. Ukuran Teks Subtitle (2x2 Balanced Grid, Even Height & Width)
-            // ================================================================
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = stringResource(R.string.subtitle_text_size),
@@ -254,9 +243,6 @@ fun PlayerAppearanceCard(
                 }
             }
 
-            // ================================================================
-            // 3. Warna Teks Subtitle (7 Circles evenly spaced across width)
-            // ================================================================
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = stringResource(R.string.subtitle_text_color),
@@ -288,9 +274,6 @@ fun PlayerAppearanceCard(
                 }
             }
 
-            // ================================================================
-            // 4. Latar Kotak Subtitle (2x2 Grid + Full-Width Custom Button)
-            // ================================================================
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = stringResource(R.string.subtitle_box_color),
@@ -299,7 +282,6 @@ fun PlayerAppearanceCard(
                     fontWeight = FontWeight.Medium
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Row 1: Transparan & Hitam 50%
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -320,7 +302,6 @@ fun PlayerAppearanceCard(
                         )
                     }
 
-                    // Row 2: Hitam 75% & Hitam Solid
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -341,12 +322,11 @@ fun PlayerAppearanceCard(
                         )
                     }
 
-                    // Row 3: Full-width Custom Button
                     val isCustomBox = appearance.subtitleBoxColor !in PlayerAppearancePresets.subtitleBoxColors
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp)
+                            .height(44.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isCustomBox) IdlixRed else SurfaceVariantDark)
                             .border(
@@ -383,9 +363,6 @@ fun PlayerAppearanceCard(
                 }
             }
 
-            // ================================================================
-            // 5. Posisi Subtitle
-            // ================================================================
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -420,17 +397,9 @@ fun PlayerAppearanceCard(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = TextWhite
-                    )
                 }
             }
 
-            // Reset All Appearance
             TextButton(
                 onClick = { PlayerAppearanceStore.resetAll() },
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -447,7 +416,6 @@ fun PlayerAppearanceCard(
         }
     }
 
-    // Color Picker Sheet
     ColorPickerSheet(
         isOpen = activePicker != ActivePickerTarget.NONE,
         initialColor = when (activePicker) {
@@ -478,16 +446,13 @@ fun PlayerAppearanceCard(
     )
 }
 
-/**
- * Reusable Option Button with fixed height, single-line text, and balanced styling
- */
 @Composable
 fun OptionPillButton(
     text: String,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 40.dp
+    height: Dp = 44.dp
 ) {
     Box(
         modifier = modifier
@@ -514,9 +479,6 @@ fun OptionPillButton(
     }
 }
 
-/**
- * Circular Swatch for preset colors
- */
 @Composable
 fun MobileColorSwatch(
     color: Int,
@@ -532,31 +494,34 @@ fun MobileColorSwatch(
 
     Box(
         modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(Color(color))
-            .border(
-                width = if (isSelected) 2.5.dp else 1.dp,
-                color = if (isSelected) IdlixRed else Color.White.copy(alpha = 0.25f),
-                shape = CircleShape
-            )
+            .size(44.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = if (isLight) Color.Black else Color.White,
-                modifier = Modifier.size(16.dp)
-            )
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(Color(color))
+                .border(
+                    width = if (isSelected) 2.5.dp else 1.dp,
+                    color = if (isSelected) IdlixRed else Color.White.copy(alpha = 0.25f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = if (isLight) Color.Black else Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
 
-/**
- * 7th swatch circle dedicated for Custom Color Picker trigger
- */
 @Composable
 fun CustomColorSwatch(
     currentColor: Int,
@@ -572,31 +537,37 @@ fun CustomColorSwatch(
 
     Box(
         modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(if (isCustomSelected) Color(currentColor) else SurfaceVariantDark)
-            .border(
-                width = if (isCustomSelected) 2.5.dp else 1.dp,
-                color = if (isCustomSelected) IdlixRed else Color.White.copy(alpha = 0.25f),
-                shape = CircleShape
-            )
+            .size(44.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (isCustomSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = if (isLight) Color.Black else Color.White,
-                modifier = Modifier.size(16.dp)
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Palette,
-                contentDescription = "Custom Color",
-                tint = TextWhite,
-                modifier = Modifier.size(16.dp)
-            )
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(if (isCustomSelected) Color(currentColor) else SurfaceVariantDark)
+                .border(
+                    width = if (isCustomSelected) 2.5.dp else 1.dp,
+                    color = if (isCustomSelected) IdlixRed else Color.White.copy(alpha = 0.25f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isCustomSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = if (isLight) Color.Black else Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = "Custom Color",
+                    tint = TextWhite,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }

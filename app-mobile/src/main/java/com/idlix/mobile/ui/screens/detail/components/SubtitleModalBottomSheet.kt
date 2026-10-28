@@ -214,9 +214,6 @@ fun SubtitleModalBottomSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ==========================================
-            // TAB 0: TRACKS & SUBDL SEARCH
-            // ==========================================
             if (selectedTab == 0) {
                 if (isManualSearchOpen) {
                     // Manual Title Search Form
@@ -601,16 +598,12 @@ fun SubtitleModalBottomSheet(
                     }
                 }
             } else {
-                // ==========================================
-                // TAB 1: APPEARANCE QUICK CONTROLS
-                // ==========================================
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Subtitle Size (2x2 Balanced Grid)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = stringResource(R.string.subtitle_text_size),
@@ -656,7 +649,6 @@ fun SubtitleModalBottomSheet(
                         }
                     }
 
-                    // Subtitle Text Color (7 Even Circles)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = stringResource(R.string.subtitle_text_color),
@@ -686,7 +678,6 @@ fun SubtitleModalBottomSheet(
                         }
                     }
 
-                    // Subtitle Box Background Color (2x2 Grid + Full-Width Custom Button)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = stringResource(R.string.subtitle_box_color),
@@ -695,7 +686,6 @@ fun SubtitleModalBottomSheet(
                             fontWeight = FontWeight.Medium
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Row 1: Transparan & Hitam 50%
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -716,7 +706,6 @@ fun SubtitleModalBottomSheet(
                                 )
                             }
 
-                            // Row 2: Hitam 75% & Hitam Solid
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -737,12 +726,11 @@ fun SubtitleModalBottomSheet(
                                 )
                             }
 
-                            // Row 3: Full-width Custom Button
                             val isCustomBox = appearance.subtitleBoxColor !in PlayerAppearancePresets.subtitleBoxColors
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(40.dp)
+                                    .height(44.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (isCustomBox) IdlixRed else SurfaceVariantDark)
                                     .border(
@@ -779,7 +767,6 @@ fun SubtitleModalBottomSheet(
                         }
                     }
 
-                    // Direct shortcut to position editor
                     Button(
                         onClick = {
                             onDismiss()
@@ -792,11 +779,8 @@ fun SubtitleModalBottomSheet(
                             .height(44.dp)
                     ) {
                         Text(text = stringResource(R.string.adjust_position_on_video), color = Color.White, fontSize = 13.sp)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                     }
 
-                    // Reset Appearance
                     TextButton(
                         onClick = { PlayerAppearanceStore.resetAll() },
                         modifier = Modifier.align(Alignment.CenterHorizontally)

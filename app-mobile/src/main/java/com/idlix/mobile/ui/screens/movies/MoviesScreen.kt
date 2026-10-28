@@ -87,7 +87,6 @@ fun MoviesScreen(
             .background(BackgroundDark)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
             Text(
                 text = stringResource(R.string.movies),
                 color = TextWhite,
@@ -98,7 +97,6 @@ fun MoviesScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             )
 
-            // Filter Chips
             FilterChipRow(
                 items = movieGenres,
                 selectedId = uiState.selectedGenre,
