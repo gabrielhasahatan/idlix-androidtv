@@ -23,10 +23,10 @@ android {
         applicationId = "com.idlix.tv"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.0.5"
 
-        val backendUrl = localProperties.getProperty("backendApiUrl") ?: "https://streamapi.abdiworks.my.id/"
+        val backendUrl = localProperties.getProperty("backendApiUrl") ?: "https://z2.idlixku.com/"
         buildConfigField("String", "BACKEND_API_URL", "\"$backendUrl\"")
 
         vectorDrawables {
@@ -97,6 +97,7 @@ android {
 
 dependencies {
     implementation(project(":core:data"))
+    implementation(project(":core:player-ui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

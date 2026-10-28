@@ -19,6 +19,7 @@ import com.idlix.tv.ui.screens.player.PlayerScreen
 import com.idlix.tv.ui.screens.search.SearchScreen
 import com.idlix.tv.ui.screens.series.SeriesScreen
 import com.idlix.tv.ui.screens.settings.SettingsScreen
+import com.idlix.tv.ui.screens.settings.SubtitlePositionEditorScreen
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -39,7 +40,7 @@ fun AppNavigation(
         else -> NavItem.HOME
     }
 
-    val isFullScreenRoute = currentRoute.startsWith("player") || currentRoute.startsWith("detail")
+    val isFullScreenRoute = currentRoute.startsWith("player") || currentRoute.startsWith("detail") || currentRoute.startsWith("subtitle_position_editor")
 
     if (isFullScreenRoute) {
         // Render without side drawer
@@ -157,7 +158,17 @@ private fun androidx.navigation.NavGraphBuilder.setupNavRoutes(
     }
 
     composable(Screen.Settings.route) {
-        SettingsScreen()
+        SettingsScreen(
+            onOpenSubtitlePositionEditor = {
+                navController.navigate(Screen.SubtitlePositionEditor.route)
+            }
+        )
+    }
+
+    composable(Screen.SubtitlePositionEditor.route) {
+        SubtitlePositionEditorScreen(
+            onBack = { navController.popBackStack() }
+        )
     }
 
     composable(

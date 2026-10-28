@@ -18,6 +18,7 @@ sealed class MobileScreen(val route: String) {
     object Search : MobileScreen("search")
     object Library : MobileScreen("library")
     object Settings : MobileScreen("settings")
+    object SubtitlePositionEditor : MobileScreen("settings/subtitle_position")
 
     object Detail : MobileScreen("detail/{contentType}/{slug}") {
         fun createRoute(contentType: String, slug: String): String {

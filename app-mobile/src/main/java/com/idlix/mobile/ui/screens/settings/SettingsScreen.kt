@@ -67,6 +67,7 @@ import com.idlix.mobile.ui.theme.TextWhite
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
+    onOpenSubtitlePositionEditor: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -313,6 +314,11 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            // Player & Subtitle Appearance Card
+            PlayerAppearanceCard(
+                onOpenPositionEditor = onOpenSubtitlePositionEditor
+            )
 
             // DNS over HTTPS (DoH) Card
             Card(

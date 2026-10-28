@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -62,6 +63,9 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.idlix.data.local.PlayerAppearanceStore
+import com.idlix.player.ui.SubtitleOverlay
+import com.idlix.player.ui.rememberPlayerCues
 import com.idlix.tv.R
 import com.idlix.tv.ui.components.TvLoadingSpinner
 import com.idlix.tv.ui.theme.NetflixBlack
@@ -140,6 +144,7 @@ fun PlayerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
+    val appearance by PlayerAppearanceStore.appearance.collectAsState()
     val scope = rememberCoroutineScope()
 
     var showControls by remember { mutableStateOf(true) }
@@ -149,6 +154,7 @@ fun PlayerScreen(
     var isScrubbing by remember { mutableStateOf(false) }
     var userInteractionCount by remember { mutableIntStateOf(0) }
     var wasPlayingBeforeBackground by remember { mutableStateOf(false) }
+    var isEditingPositionOnVideo by remember { mutableStateOf(false) }
 
     val remainingMs = if (duration > 0L) (duration - currentPos).coerceAtLeast(0L) else Long.MAX_VALUE
     val isNearEnd = duration > 60_000L && remainingMs in 0L..90_000L
@@ -176,9 +182,9 @@ fun PlayerScreen(
         rootFocusRequester.requestFocus()
     }
 
-    // Auto-hide controls after 6 seconds of inactivity, paused during modal, scrubbing, or next episode prompt
-    LaunchedEffect(showControls, uiState.isSubtitlePickerVisible, isScrubbing, userInteractionCount, isNextPromptVisible) {
-        if (uiState.isSubtitlePickerVisible || isScrubbing || isNextPromptVisible) {
+    // Auto-hide controls after 6 seconds of inactivity, paused during modal, scrubbing, editor or next episode prompt
+    LaunchedEffect(showControls, uiState.isSubtitlePickerVisible, isScrubbing, userInteractionCount, isNextPromptVisible, isEditingPositionOnVideo) {
+        if (uiState.isSubtitlePickerVisible || isScrubbing || isNextPromptVisible || isEditingPositionOnVideo) {
             // Keep controls open or don't steal focus from prompt / modals
             return@LaunchedEffect
         }
@@ -206,14 +212,18 @@ fun PlayerScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(NetflixBlack)
+            .background(Color(appearance.backgroundColor))
             .focusRequester(rootFocusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     when (keyEvent.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_BACK -> {
-                            if (uiState.isSubtitlePickerVisible) {
+                            if (isEditingPositionOnVideo) {
+                                isEditingPositionOnVideo = false
+                                activePlayer?.play()
+                                true
+                            } else if (uiState.isSubtitlePickerVisible) {
                                 viewModel.closeSubtitlePicker()
                                 true
                             } else if (isNextPromptVisible) {
@@ -569,26 +579,37 @@ fun PlayerScreen(
                 }
             }
 
-            // Video Surface with high-visibility Netflix-style subtitles
+            val cues by rememberPlayerCues(exoPlayer)
+
+            // Video Surface with user-configured player background color
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = exoPlayer
                         useController = false
-                        subtitleView?.apply {
-                            setUserDefaultStyle()
-                            setUserDefaultTextSize()
-                            setFractionalTextSize(0.053f) // Standard Netflix TV subtitle proportion
-                        }
+                        setShutterBackgroundColor(appearance.backgroundColor)
+                        subtitleView?.visibility = android.view.View.GONE
                     }
+                },
+                update = { view ->
+                    view.setShutterBackgroundColor(appearance.backgroundColor)
                 },
                 modifier = Modifier.fillMaxSize()
             )
 
+            // Custom Subtitle Overlay with user appearance & position
+            if (uiState.isSubtitleEnabled && !isEditingPositionOnVideo) {
+                SubtitleOverlay(
+                    cues = cues,
+                    appearance = appearance,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
             // D-Pad Player Controls
             TvPlayerControls(
                 title = resolved.title,
-                isVisible = showControls && !uiState.isSubtitlePickerVisible,
+                isVisible = showControls && !uiState.isSubtitlePickerVisible && !isEditingPositionOnVideo,
                 isPlaying = isPlaying,
                 currentPosMs = currentPos,
                 durationMs = duration,
@@ -656,6 +677,17 @@ fun PlayerScreen(
                 isSubtitleEnabled = uiState.isSubtitleEnabled,
                 subdlSubtitles = uiState.subdlSubtitles,
                 isSearchingSubdl = uiState.isSearchingSubdl,
+                subdlCandidates = uiState.subdlCandidates,
+                subdlError = uiState.subdlError,
+                subdlActiveQuery = uiState.subdlActiveQuery,
+                isManualSearchOpen = uiState.isManualSearchOpen,
+                manualTitle = uiState.manualTitle,
+                manualYear = uiState.manualYear,
+                manualSeason = uiState.manualSeason,
+                manualEpisode = uiState.manualEpisode,
+                isUsingSessionOverride = uiState.isUsingSessionOverride,
+                isAppearancePanelOpen = uiState.isAppearancePanelOpen,
+                isSeries = contentType.equals("tv", ignoreCase = true) || contentType.equals("series", ignoreCase = true),
                 onSelectTrack = { track ->
                     viewModel.selectSubtitleTrack(track)
                     applySubtitleTrack(track)
@@ -668,17 +700,71 @@ fun PlayerScreen(
                 onSearchSubdlClick = {
                     viewModel.searchSubdlSubtitles()
                 },
+                onOpenManualSearch = {
+                    viewModel.openManualSearch()
+                },
+                onCloseManualSearch = {
+                    viewModel.closeManualSearch()
+                },
+                onManualTitleChange = {
+                    viewModel.updateManualTitle(it)
+                },
+                onManualYearChange = {
+                    viewModel.updateManualYear(it)
+                },
+                onManualSeasonChange = {
+                    viewModel.updateManualSeason(it)
+                },
+                onManualEpisodeChange = {
+                    viewModel.updateManualEpisode(it)
+                },
+                onSubmitManualSearch = {
+                    viewModel.submitManualSearch()
+                },
+                onSelectCandidate = { candidate ->
+                    viewModel.selectSubdlCandidate(candidate)
+                },
+                onRestoreOriginalTitle = {
+                    viewModel.restoreOriginalTitle()
+                },
+                onOpenAppearancePanel = {
+                    viewModel.openAppearancePanel()
+                },
+                onCloseAppearancePanel = {
+                    viewModel.closeAppearancePanel()
+                },
+                onOpenPositionEditor = {
+                    viewModel.closeSubtitlePicker()
+                    exoPlayer.pause()
+                    isEditingPositionOnVideo = true
+                },
                 onDismiss = {
                     viewModel.closeSubtitlePicker()
                 }
             )
+
+            // Direct in-player subtitle position editor overlay
+            if (isEditingPositionOnVideo) {
+                SubtitlePositionEditorContent(
+                    cues = cues,
+                    onSaved = {
+                        isEditingPositionOnVideo = false
+                        exoPlayer.play()
+                    },
+                    onDismiss = {
+                        isEditingPositionOnVideo = false
+                        exoPlayer.play()
+                    }
+                )
+            }
+
             // Next Episode Prompt for TV Series (When <= 90s remaining)
             if (uiState.nextEpisode != null) {
                 val remainingSec = (remainingMs / 1000).toInt().coerceAtLeast(0)
                 TvNextEpisodePrompt(
                     nextEpisode = uiState.nextEpisode!!,
                     remainingSeconds = remainingSec,
-                    isVisible = isNextPromptVisible && !uiState.isSubtitlePickerVisible,
+                    isVisible = isNextPromptVisible && !uiState.isSubtitlePickerVisible && !isEditingPositionOnVideo,
                     onPlayNext = {
                         viewModel.playNextEpisode()
                     },

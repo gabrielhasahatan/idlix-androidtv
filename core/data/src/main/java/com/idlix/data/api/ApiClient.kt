@@ -328,7 +328,7 @@ object ApiClient {
 
     suspend fun testDns(provider: String = getDnsProvider()): Result<String> = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
-        val testHost = "streamapi.abdiworks.my.id"
+        val testHost = "z2.idlixku.com"
         try {
             val addresses = when (provider.lowercase()) {
                 DNS_PROVIDER_SYSTEM -> Dns.SYSTEM.lookup(testHost)

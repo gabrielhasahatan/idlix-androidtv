@@ -21,7 +21,7 @@ android {
     defaultConfig {
         minSdk = 24
 
-        val backendUrl = localProperties.getProperty("backendApiUrl") ?: "https://streamapi.abdiworks.my.id/"
+        val backendUrl = localProperties.getProperty("backendApiUrl") ?: "https://z2.idlixku.com/"
         buildConfigField("String", "BACKEND_API_URL", "\"$backendUrl\"")
     }
 
@@ -36,6 +36,10 @@ android {
 
     buildFeatures {
         buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 

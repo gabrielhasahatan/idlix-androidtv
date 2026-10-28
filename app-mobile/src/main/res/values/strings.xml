@@ -146,4 +146,66 @@
     <string name="subdl_key_saved_success">SubDL API key saved successfully!</string>
     <string name="dns_saved_success">DNS provider saved successfully!</string>
     <string name="cache_cleared_success">Image cache cleared successfully</string>
+
+    <!-- Player & Subtitle Appearance -->
+    <string name="player_appearance_header">Player &amp; Subtitle Appearance</string>
+    <string name="player_appearance_desc">Customize player background, subtitle font size, text color, box background, and position.</string>
+    <string name="player_bg_color">Player Background Color</string>
+    <string name="subtitle_box_color">Subtitle Box Background</string>
+    <string name="subtitle_text_size">Subtitle Text Size</string>
+    <string name="subtitle_text_color">Subtitle Text Color</string>
+    <string name="subtitle_position">Subtitle Position</string>
+    <string name="adjust_subtitle_position">Adjust Subtitle Position →</string>
+    <string name="adjust_position_on_video">Adjust Position on Video →</string>
+    <string name="position_summary_default">Center Bottom (Default)</string>
+    <string name="position_summary_custom">Custom (X %1$d%%, Y %2$d%%)</string>
+    <string name="size_small">Small</string>
+    <string name="size_medium">Medium</string>
+    <string name="size_large">Large</string>
+    <string name="size_extra_large">Extra Large</string>
+    <string name="box_transparent">Transparent</string>
+    <string name="box_black_50">Black 50%</string>
+    <string name="box_black_75">Black 75%</string>
+    <string name="box_black_solid">Black Solid</string>
+    <string name="color_custom">Custom 🎨</string>
+    <string name="color_recent">Recent Custom Colors</string>
+    <string name="color_picker_title">Color Picker</string>
+    <string name="hex_label">HEX Color Code (#RRGGBB)</string>
+    <string name="hex_invalid">Invalid HEX color code</string>
+    <string name="alpha_label">Opacity / Alpha</string>
+    <string name="apply">Apply</string>
+    <string name="save">Save</string>
+    <string name="reset">Reset</string>
+    <string name="reset_all_appearance">Reset Appearance to Default</string>
+    <string name="discard_changes_title">Discard Changes?</string>
+    <string name="discard_changes_desc">You have unsaved subtitle position adjustments.</string>
+    <string name="keep_editing">Keep Editing</string>
+    <string name="discard">Discard</string>
+    <string name="editor_hint_tv">Use Arrow buttons on remote to move. Hold to move faster. Press OK to save.</string>
+    <string name="editor_hint_mobile">Drag subtitle to reposition or tap arrow buttons. Tap Save when finished.</string>
+    <string name="subtitle_preview_sample_1">This is an example subtitle line.</string>
+    <string name="subtitle_preview_sample_2">Adjust position, color, and size here.</string>
+    <string name="subtitle_appearance_shortcut">Subtitle Appearance</string>
+    <string name="subtitle_tracks_tab">Tracks</string>
+    <string name="subtitle_appearance_tab">Appearance</string>
+    <string name="back_to_list">Back to Subtitles</string>
+
+    <!-- SubDL Manual Search -->
+    <string name="subdl_results_for">Results for: %s</string>
+    <string name="subdl_manual_search">Manual Search</string>
+    <string name="subdl_title_label">Title</string>
+    <string name="subdl_year_label">Year (Optional)</string>
+    <string name="subdl_season_label">Season</string>
+    <string name="subdl_episode_label">Episode</string>
+    <string name="subdl_search_action">Search SubDL</string>
+    <string name="subdl_restore_original">Restore Original Title</string>
+    <string name="subdl_using_override">Using your manual search</string>
+    <string name="subdl_not_found_hint">No subtitles found for \'%s\'. Perhaps check for typos or type the title manually?</string>
+    <string name="subdl_pick_title">Matching Titles from SubDL:</string>
+    <string name="subdl_error_network">Network error connecting to SubDL. Please check internet.</string>
+    <string name="subdl_error_quota">SubDL rate limit or quota exceeded. Please check SubDL API key in Settings.</string>
+    <string name="subdl_error_invalid_key">Invalid SubDL API key. Please configure a valid key in Settings.</string>
+    <string name="subdl_error_generic">Error from SubDL: %s</string>
+    <string name="subdl_type_title_btn">Type Title Manually</string>
+    <string name="advanced_options">Advanced Options</string>
 </resources>

@@ -18,6 +18,7 @@ import com.idlix.mobile.ui.screens.movies.MoviesScreen
 import com.idlix.mobile.ui.screens.search.SearchScreen
 import com.idlix.mobile.ui.screens.series.SeriesScreen
 import com.idlix.mobile.ui.screens.settings.SettingsScreen
+import com.idlix.mobile.ui.screens.settings.SubtitlePositionEditorScreen
 
 @Composable
 fun AppMobileNavHost(
@@ -146,7 +147,21 @@ fun AppMobileNavHost(
             }
         ) {
             SettingsScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onOpenSubtitlePositionEditor = {
+                    navController.navigate(MobileScreen.SubtitlePositionEditor.route)
+                }
+            )
+        }
+
+        // 8. Subtitle Position Editor
+        composable(
+            route = MobileScreen.SubtitlePositionEditor.route,
+            enterTransition = { fadeIn(tween(250)) },
+            exitTransition = { fadeOut(tween(250)) }
+        ) {
+            SubtitlePositionEditorScreen(
+                onBack = { navController.popBackStack() }
             )
         }
     }

@@ -74,6 +74,7 @@ import okhttp3.Request
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onOpenSubtitlePositionEditor: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -567,6 +568,13 @@ fun SettingsScreen(
                 }
             }
         }
+
+        // ==========================================
+        // SECTION: PLAYER & SUBTITLE APPEARANCE
+        // ==========================================
+        PlayerAppearanceSection(
+            onOpenPositionEditor = onOpenSubtitlePositionEditor
+        )
 
         // ==========================================
         // SECTION: DNS-OVER-HTTPS (DoH)
