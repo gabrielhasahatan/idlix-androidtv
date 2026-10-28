@@ -131,7 +131,6 @@ fun HomeScreen(
                     }
                 }
 
-                // 1. Hero Carousel
                 if (uiState.bannerMovies.isNotEmpty()) {
                     HeroBannerPager(
                         movies = uiState.bannerMovies,
@@ -140,7 +139,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // 2. Continue Watching
                 if (uiState.continueWatching.isNotEmpty()) {
                     ContinueWatchingSection(
                         items = uiState.continueWatching,
@@ -149,7 +147,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // If network failed to load but continue watching exists, show inline retry card
                 if (uiState.bannerMovies.isEmpty() && uiState.popularMovies.isEmpty()) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
@@ -185,7 +182,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // 3. Trending Now
                 if (uiState.trending.isNotEmpty()) {
                     MovieSwimlane(
                         title = stringResource(R.string.trending_now),
@@ -195,7 +191,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 4. Popular TV Series
                 if (uiState.popularSeries.isNotEmpty()) {
                     SeriesSwimlane(
                         title = stringResource(R.string.popular_series),
@@ -205,7 +200,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 5. Popular Movies
                 if (uiState.popularMovies.isNotEmpty()) {
                     MovieSwimlane(
                         title = stringResource(R.string.popular_movies),
@@ -215,7 +209,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 6. Action Movies
                 if (uiState.actionMovies.isNotEmpty()) {
                     MovieSwimlane(
                         title = stringResource(R.string.movies_action),
@@ -225,7 +218,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 7. Comedy Movies
                 if (uiState.comedyMovies.isNotEmpty()) {
                     MovieSwimlane(
                         title = stringResource(R.string.movies_comedy),

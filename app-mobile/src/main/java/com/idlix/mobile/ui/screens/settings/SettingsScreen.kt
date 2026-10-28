@@ -20,7 +20,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -30,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -46,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,7 +59,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.idlix.data.api.ApiClient
+import com.idlix.data.update.AppPlatform
+import com.idlix.data.update.AppUpdateManager
+import com.idlix.data.update.AppUpdateState
+import com.idlix.mobile.BuildConfig
 import com.idlix.mobile.R
+import com.idlix.mobile.ui.components.resolveMobileUpdateErrorMessage
 import com.idlix.mobile.ui.theme.BackgroundDark
 import com.idlix.mobile.ui.theme.IdlixAccentCyan
 import com.idlix.mobile.ui.theme.IdlixRed
@@ -67,9 +77,12 @@ import com.idlix.mobile.ui.theme.TextWhite
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
+    onOpenSubtitlePositionEditor: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val updateState by AppUpdateManager.state.collectAsState()
     var isSubdlKeyVisible by remember { mutableStateOf(false) }
 
     Column(
@@ -314,6 +327,11 @@ fun SettingsScreen(
                 }
             }
 
+            // Player & Subtitle Appearance Card
+            PlayerAppearanceCard(
+                onOpenPositionEditor = onOpenSubtitlePositionEditor
+            )
+
             // DNS over HTTPS (DoH) Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = SurfaceDark),
@@ -469,6 +487,215 @@ fun SettingsScreen(
                 }
             }
 
+            // App Update Card (l10n)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdateAlt,
+                            contentDescription = null,
+                            tint = IdlixRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.update_section_header),
+                            color = TextWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.update_section_desc),
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
+                        color = TextDim,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    when (val currentUpdateState = updateState) {
+                        is AppUpdateState.Downloading -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(
+                                            R.string.update_downloading_progress,
+                                            currentUpdateState.latestVersion,
+                                            currentUpdateState.progressPercent
+                                        ),
+                                        color = TextWhite,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    if (currentUpdateState.totalBytes > 0L) {
+                                        val downloadedMb = currentUpdateState.downloadedBytes.toFloat() / (1024f * 1024f)
+                                        val totalMb = currentUpdateState.totalBytes.toFloat() / (1024f * 1024f)
+                                        Text(
+                                            text = stringResource(R.string.update_downloading_bytes, downloadedMb, totalMb),
+                                            color = TextDim,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                LinearProgressIndicator(
+                                    progress = { (currentUpdateState.progressPercent / 100f).coerceIn(0f, 1f) },
+                                    color = IdlixRed,
+                                    trackColor = SurfaceVariantDark,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                )
+                            }
+                        }
+
+                        is AppUpdateState.ReadyToInstall -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.update_ready_status, currentUpdateState.latestVersion),
+                                    color = Color(0xFF4CAF50),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        AppUpdateManager.checkForUpdate(
+                                            context = context,
+                                            platform = AppPlatform.MOBILE,
+                                            currentVersion = BuildConfig.VERSION_NAME,
+                                            isManualCheck = true
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.update_recheck_btn),
+                                        color = TextWhite,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                Button(
+                                    onClick = {
+                                        AppUpdateManager.installApk(context, currentUpdateState.apkFile)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.update_install_btn, currentUpdateState.latestVersion),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            val isChecking = currentUpdateState is AppUpdateState.Checking
+
+                            if (currentUpdateState is AppUpdateState.UpToDate) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF4CAF50),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = stringResource(R.string.update_up_to_date, currentUpdateState.currentVersion),
+                                        color = Color(0xFF4CAF50),
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                            } else if (currentUpdateState is AppUpdateState.Error) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Error,
+                                        contentDescription = null,
+                                        tint = IdlixRed,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = resolveMobileUpdateErrorMessage(currentUpdateState),
+                                        color = IdlixRed,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                            }
+
+                            Button(
+                                onClick = {
+                                    AppUpdateManager.checkForUpdate(
+                                        context = context,
+                                        platform = AppPlatform.MOBILE,
+                                        currentVersion = BuildConfig.VERSION_NAME,
+                                        isManualCheck = true
+                                    )
+                                },
+                                enabled = !isChecking,
+                                colors = ButtonDefaults.buttonColors(containerColor = IdlixRed),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                if (isChecking) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = TextWhite,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.update_checking))
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(stringResource(R.string.update_check_btn))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // About Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = SurfaceDark),
@@ -483,7 +710,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = stringResource(R.string.about_idlix_desc),
+                        text = stringResource(R.string.about_idlix_version_format, BuildConfig.VERSION_NAME),
                         color = TextMuted,
                         fontSize = 12.sp,
                         lineHeight = 18.sp

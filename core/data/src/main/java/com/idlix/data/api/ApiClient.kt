@@ -266,7 +266,7 @@ object ApiClient {
         override fun lookup(hostname: String): List<InetAddress> {
             val now = System.currentTimeMillis()
 
-            // 1. Fast in-memory cache check (0ms)
+            // In-memory DNS cache check
             val cached = dnsCache[hostname]
             if (cached != null && now < cached.expiresAt) {
                 return cached.addresses
@@ -281,7 +281,7 @@ object ApiClient {
                 return resolved
             }
 
-            // 2. Circuit breaker check: if DoH has failed repeatedly, fallback immediately to system DNS
+            // Fallback to system DNS when DoH circuit breaker is tripped
             if (now < circuitBreakerTrippedUntil) {
                 return try {
                     val resolved = prioritizeIpv4(Dns.SYSTEM.lookup(hostname))
@@ -292,7 +292,7 @@ object ApiClient {
                 }
             }
 
-            // 3. Resolve using selected DoH provider
+            // Resolve via configured DoH provider
             val doh = getDohInstance(provider)
             if (doh != null) {
                 try {
@@ -328,7 +328,7 @@ object ApiClient {
 
     suspend fun testDns(provider: String = getDnsProvider()): Result<String> = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
-        val testHost = "streamapi.abdiworks.my.id"
+        val testHost = "z2.idlixku.com"
         try {
             val addresses = when (provider.lowercase()) {
                 DNS_PROVIDER_SYSTEM -> Dns.SYSTEM.lookup(testHost)
@@ -359,6 +359,25 @@ object ApiClient {
             })
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    val updateHttpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .dns(dynamicDns)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .addInterceptor { chain ->
+                val req = chain.request().newBuilder()
+                    .header("User-Agent", userAgentHeader)
+                    .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    .header("Pragma", "no-cache")
+                    .build()
+                chain.proceed(req)
+            }
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }

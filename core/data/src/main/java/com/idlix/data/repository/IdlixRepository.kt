@@ -201,14 +201,14 @@ class IdlixRepository(
     ): Result<ResolvedPlayback> = withContext(Dispatchers.IO) {
         val cacheKey = "$contentType:$contentId"
 
-        // 1. Instant hit: Already cached in memory
+        // In-memory cache hit
         val cached = playbackCache[cacheKey]
         if (cached != null && (System.currentTimeMillis() - cached.timestamp) < CACHE_TTL_MS) {
             onCountdown?.invoke(0)
             return@withContext Result.success(cached.playback)
         }
 
-        // 2. Pre-warming hit: Already resolving in background
+        // Await background pre-warming resolution if ongoing
         val ongoing = activePrewarms[cacheKey]
         if (ongoing != null) {
             try {
@@ -220,7 +220,6 @@ class IdlixRepository(
             } catch (e: Exception) {}
         }
 
-        // 3. Fallback to standard resolution
         val res = resolveStreamInternal(contentType, contentId, contentTitle, onCountdown)
         res.onSuccess { resolved ->
             playbackCache[cacheKey] = CachedPlayback(resolved)
@@ -270,7 +269,7 @@ class IdlixRepository(
                 }
             }
 
-            // Step 1: Get play-info (gateToken + unlockAt) from backend API
+            // Fetch gate token and unlock schedule
             val playInfo: PlayInfoResponse = if (targetType == "episode") {
                 idlixApi.getEpisodePlayInfo(targetId)
             } else {
@@ -281,7 +280,7 @@ class IdlixRepository(
                 return@withContext Result.failure(Exception("Gagal memperoleh token pemutaran"))
             }
 
-            // Step 2: Server-synchronized countdown
+            // Server-synchronized countdown until gate unlocks
             val diffMs = if (playInfo.serverNow > 0 && playInfo.unlockAt > playInfo.serverNow) {
                 playInfo.unlockAt - playInfo.serverNow
             } else {
@@ -313,7 +312,7 @@ class IdlixRepository(
                 onCountdown?.invoke(1)
             }
 
-            // Step 3: Claim session with retry polling via Backend API
+            // Poll session claim until unlocked
             var validClaimRes: com.idlix.data.model.ClaimResponse? = null
 
             for (attempt in 1..15) {
@@ -337,7 +336,7 @@ class IdlixRepository(
                 return@withContext Result.failure(Exception("Gagal mengklaim sesi pemutaran. Silakan coba lagi."))
             }
 
-            // Step 4: Redeem HLS URL from majorplay CDN
+            // Redeem final HLS playback URL
             val redeemUrl = claimRes.redeemUrl.ifBlank { "https://e2e.majorplay.net/api/play" }
             val redeemRes = try {
                 majorplayApi.redeemPlay(

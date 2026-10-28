@@ -28,9 +28,12 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +64,10 @@ import com.idlix.tv.R
 import com.idlix.data.api.ApiClient
 import com.idlix.data.model.SubdlResponse
 import com.idlix.data.repository.SubdlRepository
+import com.idlix.data.update.AppPlatform
+import com.idlix.data.update.AppUpdateManager
+import com.idlix.data.update.AppUpdateState
+import com.idlix.tv.ui.components.resolveTvUpdateErrorMessage
 import com.idlix.tv.ui.theme.NetflixBlack
 import com.idlix.tv.ui.theme.NetflixDarkCard
 import com.idlix.tv.ui.theme.NetflixLightGray
@@ -74,6 +81,7 @@ import okhttp3.Request
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onOpenSubtitlePositionEditor: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -81,7 +89,6 @@ fun SettingsScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val scrollState = rememberScrollState()
 
-    // --- Backend API State ---
     var currentActiveUrl by remember { mutableStateOf(ApiClient.getBaseUrl()) }
     var inputUrl by remember { mutableStateOf(currentActiveUrl) }
     var isUrlInputFocused by remember { mutableStateOf(false) }
@@ -90,7 +97,6 @@ fun SettingsScreen(
     var isTestingBackend by remember { mutableStateOf(false) }
     var isBackendTestSuccess by remember { mutableStateOf(false) }
 
-    // --- SubDL API Key State ---
     var currentActiveApiKey by remember { mutableStateOf(SubdlRepository.getApiKey()) }
     var inputApiKey by remember { mutableStateOf(currentActiveApiKey) }
     var isApiKeyInputFocused by remember { mutableStateOf(false) }
@@ -100,17 +106,26 @@ fun SettingsScreen(
     var isTestingSubdl by remember { mutableStateOf(false) }
     var isSubdlTestSuccess by remember { mutableStateOf(false) }
 
-    // --- DNS State ---
     var currentActiveDns by remember { mutableStateOf(ApiClient.getDnsProvider()) }
     var selectedDns by remember { mutableStateOf(currentActiveDns) }
     var dnsTestStatus by remember { mutableStateOf<String?>(null) }
     var isTestingDns by remember { mutableStateOf(false) }
     var isDnsTestSuccess by remember { mutableStateOf(false) }
 
-    // --- Global Save Notification ---
     var saveMessage by remember { mutableStateOf<String?>(null) }
+    val updateState by AppUpdateManager.state.collectAsState()
 
-    // Test Backend API
+    LaunchedEffect(Unit) {
+        if (updateState !is AppUpdateState.ReadyToInstall) {
+            AppUpdateManager.checkForUpdate(
+                context = context,
+                platform = AppPlatform.TV,
+                currentVersion = BuildConfig.VERSION_NAME,
+                isManualCheck = false
+            )
+        }
+    }
+
     fun runTestBackend(targetUrl: String) {
         scope.launch {
             isTestingBackend = true
@@ -246,9 +261,6 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION 1: BACKEND API CONFIGURATION
-        // ==========================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -391,9 +403,6 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION 2: THIRD-PARTY SUBTITLE (SUBDL)
-        // ==========================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -568,9 +577,10 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION: DNS-OVER-HTTPS (DoH)
-        // ==========================================
+        PlayerAppearanceSection(
+            onOpenPositionEditor = onOpenSubtitlePositionEditor
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -699,9 +709,242 @@ fun SettingsScreen(
             }
         }
 
-        // ==========================================
-        // SECTION 3: SAVE ALL SETTINGS ACTION
-        // ==========================================
+        // App Update Card (l10n)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(NetflixDarkCard, RoundedCornerShape(10.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.SystemUpdateAlt,
+                    contentDescription = null,
+                    tint = NetflixWhite,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.update_section_header),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = NetflixWhite
+                    )
+                    Text(
+                        text = stringResource(R.string.update_section_desc),
+                        color = NetflixLightGray,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.update_current_version, BuildConfig.VERSION_NAME),
+                color = NetflixLightGray,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            when (val currentUpdateState = updateState) {
+                is AppUpdateState.Downloading -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    R.string.update_downloading_progress,
+                                    currentUpdateState.latestVersion,
+                                    currentUpdateState.progressPercent
+                                ),
+                                color = NetflixWhite,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (currentUpdateState.totalBytes > 0L) {
+                                val downloadedMb = currentUpdateState.downloadedBytes.toFloat() / (1024f * 1024f)
+                                val totalMb = currentUpdateState.totalBytes.toFloat() / (1024f * 1024f)
+                                Text(
+                                    text = stringResource(R.string.update_downloading_bytes, downloadedMb, totalMb),
+                                    color = NetflixLightGray,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .background(NetflixBlack, RoundedCornerShape(4.dp))
+                        ) {
+                            val fraction = (currentUpdateState.progressPercent / 100f).coerceIn(0f, 1f)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction)
+                                    .height(8.dp)
+                                    .background(NetflixRed, RoundedCornerShape(4.dp))
+                            )
+                        }
+                    }
+                }
+
+                is AppUpdateState.ReadyToInstall -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.update_ready_status, currentUpdateState.latestVersion),
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = {
+                                AppUpdateManager.installApk(context, currentUpdateState.apkFile)
+                            },
+                            colors = ButtonDefaults.colors(
+                                containerColor = NetflixRed,
+                                focusedContainerColor = NetflixWhite,
+                                contentColor = NetflixWhite,
+                                focusedContentColor = NetflixBlack
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                            modifier = Modifier.height(38.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.SystemUpdateAlt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.update_install_btn, currentUpdateState.latestVersion),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                AppUpdateManager.checkForUpdate(
+                                    context = context,
+                                    platform = AppPlatform.TV,
+                                    currentVersion = BuildConfig.VERSION_NAME,
+                                    isManualCheck = true
+                                )
+                            },
+                            colors = ButtonDefaults.colors(
+                                containerColor = NetflixBlack.copy(alpha = 0.5f),
+                                focusedContainerColor = NetflixWhite,
+                                contentColor = NetflixLightGray,
+                                focusedContentColor = NetflixBlack
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                            modifier = Modifier.height(38.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.update_recheck_btn),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    val isChecking = currentUpdateState is AppUpdateState.Checking
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = {
+                                AppUpdateManager.checkForUpdate(
+                                    context = context,
+                                    platform = AppPlatform.TV,
+                                    currentVersion = BuildConfig.VERSION_NAME,
+                                    isManualCheck = true
+                                )
+                            },
+                            enabled = !isChecking,
+                            colors = ButtonDefaults.colors(
+                                containerColor = NetflixBlack,
+                                focusedContainerColor = NetflixWhite,
+                                contentColor = NetflixWhite,
+                                focusedContentColor = NetflixBlack
+                            ),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                            modifier = Modifier.height(38.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isChecking) {
+                                        stringResource(R.string.update_checking)
+                                    } else {
+                                        stringResource(R.string.update_check_btn)
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    if (currentUpdateState is AppUpdateState.UpToDate) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.update_up_to_date, currentUpdateState.currentVersion),
+                                color = Color(0xFF4CAF50),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else if (currentUpdateState is AppUpdateState.Error) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = null,
+                                tint = NetflixRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = resolveTvUpdateErrorMessage(currentUpdateState),
+                                color = NetflixRed,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
